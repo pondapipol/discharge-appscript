@@ -3,6 +3,10 @@
 // Global State
 // ==========================================
 const chartInstances = {};
+let currentDashboardData = null;
+let currentFieldConfig = null;
+let currentYearMonth = '';
+
 const THAI_MONTHS = [
   'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
   'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
@@ -14,7 +18,9 @@ const TOP_LEVEL_LABELS = {
   '5.3': '3. แนะนำการใช้ยาในผู้ป่วย Tuberculosis รายใหม่',
   '5.4': '4. ผู้ป่วยพม่า ออกฉลากภาษาพม่า',
   '5.5': '5. แนะนำ ผู้ป่วย Stroke Case',
-  '5.6': '6. แนะนำ ผู้ป่วยที่ได้รับยาเสี่ยงต่อการเกิด SCARs'
+  '5.6': '6. แนะนำ ผู้ป่วยรายใหม่ที่ได้รับยาเสี่ยงต่อการเกิด SCARs',
+  '5.7': '7. แนะนำการใช้ยาในผู้ป่วย ARV รายใหม่',
+  '5.8': '8. อื่น ๆ'
 };
 
 const COLORS = {
@@ -36,14 +42,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function initForms() {
   const today = new Date().toISOString().split('T')[0];
-  const dateFields = ['counseling-date', 'dc-date', 'pe-date'];
-  dateFields.forEach(id => {
-    const el = document.getElementById(id);
+  var dateFields = ['counseling-date', 'dc-date', 'pe-date'];
+  dateFields.forEach(function(id) {
+    var el = document.getElementById(id);
     if (el) el.value = today;
   });
 
   // AN input: only allow digits
-  const anInput = document.getElementById('counseling-an');
+  var anInput = document.getElementById('counseling-an');
   if (anInput) {
     anInput.addEventListener('input', function() {
       this.value = this.value.replace(/\D/g, '');
@@ -58,14 +64,18 @@ function initForms() {
 // Page Navigation
 // ==========================================
 function switchPage(pageId) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
 
   document.getElementById('page-' + pageId).classList.add('active');
   document.querySelector('.nav-item[data-page="' + pageId + '"]').classList.add('active');
 
-  if (pageId === 'dashboard') {
+  // Only load data on first visit, use refresh button for updates
+  if (pageId === 'dashboard' && !currentDashboardData) {
     loadDashboard();
+  }
+  if (pageId === 'report' && !document.getElementById('report-month').value) {
+    loadReportSummary();
   }
 }
 
@@ -73,18 +83,30 @@ function switchPage(pageId) {
 // Checkbox Section Toggle
 // ==========================================
 function toggleSection(sectionId) {
-  const body = document.getElementById(sectionId);
-  const header = body.previousElementSibling;
+  var body = document.getElementById(sectionId);
+  var header = body.previousElementSibling;
 
   body.classList.toggle('collapsed');
   header.classList.toggle('collapsed');
 }
 
 function toggleStandaloneCheckbox(container) {
-  const cb = container.querySelector('input[type="checkbox"]');
-  // Only toggle if the click was not directly on the checkbox or label
+  var cb = container.querySelector('input[type="checkbox"]');
   if (event.target !== cb && event.target.tagName !== 'LABEL') {
     cb.checked = !cb.checked;
+    // Trigger onchange for category 8
+    if (cb.onchange) cb.onchange();
+  }
+}
+
+function toggleOtherText() {
+  var cb = document.getElementById('cb-38');
+  var container = document.getElementById('other-text-container');
+  if (cb && container) {
+    container.style.display = cb.checked ? 'block' : 'none';
+    if (!cb.checked) {
+      document.getElementById('other-text').value = '';
+    }
   }
 }
 
@@ -92,9 +114,9 @@ function toggleStandaloneCheckbox(container) {
 // AN Validation
 // ==========================================
 function validateAN() {
-  const input = document.getElementById('counseling-an');
-  const error = document.getElementById('an-error');
-  const value = input.value.trim();
+  var input = document.getElementById('counseling-an');
+  var error = document.getElementById('an-error');
+  var value = input.value.trim();
 
   if (!value || !/^\d{9}$/.test(value)) {
     input.classList.add('error');
@@ -108,10 +130,10 @@ function validateAN() {
 }
 
 // ==========================================
-// Counseling Form Submit
+// Counseling Form Submit (with upsert)
 // ==========================================
-function submitCounselingForm() {
-  const date = document.getElementById('counseling-date').value;
+function submitCounselingForm(forceUpsert) {
+  var date = document.getElementById('counseling-date').value;
   if (!date) {
     showToast('กรุณาเลือกวันที่', 'error');
     return;
@@ -122,29 +144,45 @@ function submitCounselingForm() {
     return;
   }
 
-  const checkboxes = {};
-  let anyChecked = false;
-  document.querySelectorAll('#page-counseling input[type="checkbox"][data-key]').forEach(cb => {
+  var checkboxes = {};
+  var anyChecked = false;
+  document.querySelectorAll('#page-counseling input[type="checkbox"][data-key]').forEach(function(cb) {
     checkboxes[cb.dataset.key] = cb.checked;
     if (cb.checked) anyChecked = true;
   });
+
+  // Auto-derive Cat_5_6_SJS_TEN_Risk: true if any 5.6 sub-item is checked
+  var any56 = ['Cat_5_6_SCARs_Allopurinol', 'Cat_5_6_SCARs_TMP_SMX', 'Cat_5_6_SCARs_Carbamazepine',
+    'Cat_5_6_SCARs_Phenobarbital', 'Cat_5_6_SCARs_Phenytoin', 'Cat_5_6_SCARs_Nevirapine']
+    .some(function(k) { return checkboxes[k]; });
+  checkboxes['Cat_5_6_SJS_TEN_Risk'] = any56;
 
   if (!anyChecked) {
     showToast('กรุณาเลือกอย่างน้อย 1 รายการ', 'error');
     return;
   }
 
-  const formData = {
+  var freeText = '';
+  var otherTextEl = document.getElementById('other-text');
+  if (otherTextEl) freeText = otherTextEl.value.trim();
+
+  var formData = {
     counselingDate: date,
     an: document.getElementById('counseling-an').value.trim(),
-    checkboxes: checkboxes
+    checkboxes: checkboxes,
+    freeText: freeText,
+    forceUpsert: forceUpsert || false
   };
 
   showLoading();
   google.script.run
     .withSuccessHandler(function(result) {
       hideLoading();
-      if (result.success) {
+      if (result.confirmUpsert) {
+        if (confirm(result.message)) {
+          submitCounselingForm(true);
+        }
+      } else if (result.success) {
         showToast(result.message, 'success');
         resetCounselingForm();
       } else {
@@ -159,30 +197,34 @@ function submitCounselingForm() {
 }
 
 function resetCounselingForm() {
-  const today = new Date().toISOString().split('T')[0];
+  var today = new Date().toISOString().split('T')[0];
   document.getElementById('counseling-date').value = today;
   document.getElementById('counseling-an').value = '';
   document.getElementById('counseling-an').classList.remove('error');
   document.getElementById('an-error').classList.remove('visible');
-  document.querySelectorAll('#page-counseling input[type="checkbox"]').forEach(cb => {
+  document.querySelectorAll('#page-counseling input[type="checkbox"]').forEach(function(cb) {
     cb.checked = false;
   });
+  var otherText = document.getElementById('other-text');
+  if (otherText) otherText.value = '';
+  var otherContainer = document.getElementById('other-text-container');
+  if (otherContainer) otherContainer.style.display = 'none';
 }
 
 // ==========================================
-// DC Form Submit
+// DC Form Submit (with confirmation)
 // ==========================================
 function submitDCForm() {
-  const date = document.getElementById('dc-date').value;
-  const countStr = document.getElementById('dc-count').value;
-  const error = document.getElementById('dc-error');
+  var date = document.getElementById('dc-date').value;
+  var countStr = document.getElementById('dc-count').value;
+  var error = document.getElementById('dc-error');
 
   if (!date) {
     showToast('กรุณาเลือกวันที่', 'error');
     return;
   }
 
-  const count = parseInt(countStr, 10);
+  var count = parseInt(countStr, 10);
   if (isNaN(count) || count < 0) {
     document.getElementById('dc-count').classList.add('error');
     error.classList.add('visible');
@@ -193,7 +235,28 @@ function submitDCForm() {
   document.getElementById('dc-count').classList.remove('error');
   error.classList.remove('visible');
 
+  // Check for existing record
   showLoading();
+  google.script.run
+    .withSuccessHandler(function(result) {
+      if (result.exists) {
+        hideLoading();
+        if (confirm('วันที่นี้มีข้อมูลแล้ว (จำนวนเดิม: ' + result.currentCount + ')\nต้องการแทนที่ด้วยข้อมูลใหม่หรือไม่?')) {
+          showLoading();
+          doSubmitDC(date, countStr);
+        }
+      } else {
+        doSubmitDC(date, countStr);
+      }
+    })
+    .withFailureHandler(function(err) {
+      hideLoading();
+      showToast('เกิดข้อผิดพลาด: ' + err.message, 'error');
+    })
+    .checkExistingDC(date);
+}
+
+function doSubmitDC(date, countStr) {
   google.script.run
     .withSuccessHandler(function(result) {
       hideLoading();
@@ -212,7 +275,7 @@ function submitDCForm() {
 }
 
 function resetDCForm() {
-  const today = new Date().toISOString().split('T')[0];
+  var today = new Date().toISOString().split('T')[0];
   document.getElementById('dc-date').value = today;
   document.getElementById('dc-count').value = '';
   document.getElementById('dc-count').classList.remove('error');
@@ -220,19 +283,19 @@ function resetDCForm() {
 }
 
 // ==========================================
-// PE Form Submit
+// PE Form Submit (with confirmation)
 // ==========================================
 function submitPEForm() {
-  const date = document.getElementById('pe-date').value;
-  const countStr = document.getElementById('pe-count').value;
-  const error = document.getElementById('pe-error');
+  var date = document.getElementById('pe-date').value;
+  var countStr = document.getElementById('pe-count').value;
+  var error = document.getElementById('pe-error');
 
   if (!date) {
     showToast('กรุณาเลือกวันที่', 'error');
     return;
   }
 
-  const count = parseInt(countStr, 10);
+  var count = parseInt(countStr, 10);
   if (isNaN(count) || count < 0) {
     document.getElementById('pe-count').classList.add('error');
     error.classList.add('visible');
@@ -244,6 +307,26 @@ function submitPEForm() {
   error.classList.remove('visible');
 
   showLoading();
+  google.script.run
+    .withSuccessHandler(function(result) {
+      if (result.exists) {
+        hideLoading();
+        if (confirm('วันที่นี้มีข้อมูลแล้ว (จำนวนเดิม: ' + result.currentCount + ')\nต้องการแทนที่ด้วยข้อมูลใหม่หรือไม่?')) {
+          showLoading();
+          doSubmitPE(date, countStr);
+        }
+      } else {
+        doSubmitPE(date, countStr);
+      }
+    })
+    .withFailureHandler(function(err) {
+      hideLoading();
+      showToast('เกิดข้อผิดพลาด: ' + err.message, 'error');
+    })
+    .checkExistingPE(date);
+}
+
+function doSubmitPE(date, countStr) {
   google.script.run
     .withSuccessHandler(function(result) {
       hideLoading();
@@ -262,7 +345,7 @@ function submitPEForm() {
 }
 
 function resetPEForm() {
-  const today = new Date().toISOString().split('T')[0];
+  var today = new Date().toISOString().split('T')[0];
   document.getElementById('pe-date').value = today;
   document.getElementById('pe-count').value = '';
   document.getElementById('pe-count').classList.remove('error');
@@ -273,11 +356,10 @@ function resetPEForm() {
 // Dashboard
 // ==========================================
 function loadDashboard() {
-  // First load available months
   google.script.run
     .withSuccessHandler(function(months) {
-      const select = document.getElementById('dashboard-month');
-      const currentVal = select.value;
+      var select = document.getElementById('dashboard-month');
+      var currentVal = select.value;
       select.innerHTML = '<option value="">-- กรุณาเลือกเดือน --</option>';
 
       if (!months || months.length === 0) {
@@ -288,13 +370,12 @@ function loadDashboard() {
       document.getElementById('dashboard-empty').style.display = 'none';
 
       months.forEach(function(ym) {
-        const opt = document.createElement('option');
+        var opt = document.createElement('option');
         opt.value = ym;
         opt.textContent = formatThaiMonth(ym);
         select.appendChild(opt);
       });
 
-      // Restore or select first month
       if (currentVal && months.indexOf(currentVal) >= 0) {
         select.value = currentVal;
       } else {
@@ -310,14 +391,17 @@ function loadDashboard() {
 }
 
 function onMonthChange() {
-  const yearMonth = document.getElementById('dashboard-month').value;
+  var yearMonth = document.getElementById('dashboard-month').value;
   if (!yearMonth) return;
 
+  currentYearMonth = yearMonth;
   showLoading();
 
   google.script.run
     .withSuccessHandler(function(data) {
       hideLoading();
+      currentDashboardData = data;
+      currentFieldConfig = data.fieldConfig;
       renderDashboard(data, yearMonth);
     })
     .withFailureHandler(function(err) {
@@ -328,40 +412,87 @@ function onMonthChange() {
 }
 
 function renderDashboard(data, yearMonth) {
-  // Stat cards
-  const counseling = data.counseling;
-  const dcTotal = data.dc.reduce(function(sum, d) { return sum + d.count; }, 0);
-  const peMonth = data.pe.find(function(p) { return p.month === yearMonth; });
-  const peTotal = peMonth ? peMonth.totalErrors : 0;
+  var counseling = data.counseling;
+  var dcTotal = data.dc.reduce(function(sum, d) { return sum + d.count; }, 0);
+  var peMonth = data.pe.find(function(p) { return p.month === yearMonth; });
+  var peTotal = peMonth ? peMonth.totalErrors : 0;
 
-  document.getElementById('stat-counseling').textContent = counseling.totalSessions;
+  // Stat cards
+  document.getElementById('stat-counseling').textContent = counseling.totalUniquePatients;
   document.getElementById('stat-discharge').textContent = dcTotal;
   document.getElementById('stat-pe').textContent = peTotal;
+
+  // Month labels on chart cards
+  var monthLabel = formatThaiMonth(yearMonth);
+  var monthLabelEls = ['chart1-month-label', 'chart2-month-label', 'chart3-month-label', 'scars-month-label', 'summary-month-label'];
+  monthLabelEls.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = monthLabel;
+  });
 
   // Summary table
   renderSummaryTable(counseling);
 
+  // SCARs table
+  renderScarsTable(counseling.scarsItems);
+
   // Charts
   renderTopCategoriesChart(counseling.topLevelCounts);
-  renderDetailedDrugsChart(counseling.detailedItems);
+  renderDetailedDrugsChart();
   renderDailyDCChart(data.dc);
   renderPEMonthlyChart(data.pe);
 }
 
+// Shared: compute category count consistently (sum sub-items for 5.1/5.6, topLevel for others)
+function getCategoryCount(counseling, cat) {
+  var allItems = counseling.allItemCounts || {};
+  var topLevel = counseling.topLevelCounts || {};
+  if (cat === '5.1') {
+    var sum = 0;
+    Object.keys(allItems).forEach(function(k) {
+      if (k.indexOf('Cat_5_1_') === 0) sum += (allItems[k] || 0);
+    });
+    return sum;
+  }
+  if (cat === '5.6') {
+    var sum = 0;
+    Object.keys(allItems).forEach(function(k) {
+      if (k.indexOf('Cat_5_6_SCARs_') === 0) sum += (allItems[k] || 0);
+    });
+    return sum;
+  }
+  return topLevel[cat] || 0;
+}
+
 function renderSummaryTable(counseling) {
-  const tbody = document.getElementById('summary-table-body');
-  const categories = ['5.1', '5.2', '5.3', '5.4', '5.5', '5.6'];
-  let total = 0;
-  let html = '';
+  var tbody = document.getElementById('summary-table-body');
+  var categories = ['5.1', '5.2', '5.3', '5.4', '5.5', '5.6', '5.7', '5.8'];
+  var total = 0;
+  var html = '';
 
   categories.forEach(function(cat) {
-    const count = counseling.topLevelCounts[cat] || 0;
+    var count = getCategoryCount(counseling, cat);
     total += count;
     html += '<tr><td>' + TOP_LEVEL_LABELS[cat] + '</td><td>' + count + '</td></tr>';
   });
 
   tbody.innerHTML = html;
   document.getElementById('summary-total').textContent = total;
+}
+
+function renderScarsTable(scarsItems) {
+  var tbody = document.getElementById('scars-table-body');
+  if (!scarsItems) {
+    tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color: var(--text-light);">ไม่มีข้อมูล</td></tr>';
+    return;
+  }
+  var html = '';
+  var scarsOrder = ['Allopurinol', 'Trimethoprim + Sulfamethoxazole (Bactrim)', 'Carbamazepine', 'Phenobarbital', 'Phenytoin', 'Nevirapine'];
+  scarsOrder.forEach(function(label) {
+    var count = scarsItems[label] || 0;
+    html += '<tr><td>' + label + '</td><td>' + count + '</td></tr>';
+  });
+  tbody.innerHTML = html;
 }
 
 // ==========================================
@@ -374,15 +505,25 @@ function destroyChart(id) {
   }
 }
 
+// Common datalabels config
+var datalabelsConfig = {
+  anchor: 'end',
+  align: 'end',
+  font: { family: 'Athiti', size: 11, weight: 'bold' },
+  color: '#555',
+  formatter: function(value) { return value > 0 ? value : ''; }
+};
+
 function renderTopCategoriesChart(topLevelCounts) {
   destroyChart('chart-top-categories');
-  const ctx = document.getElementById('chart-top-categories').getContext('2d');
+  var ctx = document.getElementById('chart-top-categories').getContext('2d');
 
-  const labels = Object.keys(TOP_LEVEL_LABELS).map(function(k) { return TOP_LEVEL_LABELS[k]; });
-  const values = Object.keys(TOP_LEVEL_LABELS).map(function(k) { return topLevelCounts[k] || 0; });
-  const bgColors = [
+  var labels = Object.keys(TOP_LEVEL_LABELS).map(function(k) { return TOP_LEVEL_LABELS[k]; });
+  var values = Object.keys(TOP_LEVEL_LABELS).map(function(k) { return topLevelCounts[k] || 0; });
+  var bgColors = [
     COLORS.honey, COLORS.periwinkle, COLORS.seaBreeze,
-    COLORS.honey, COLORS.periwinkle, COLORS.seaBreeze
+    COLORS.honey, COLORS.periwinkle, COLORS.seaBreeze,
+    COLORS.honey, COLORS.periwinkle
   ];
 
   chartInstances['chart-top-categories'] = new Chart(ctx, {
@@ -408,22 +549,18 @@ function renderTopCategoriesChart(topLevelCounts) {
           callbacks: {
             label: function(ctx) { return ctx.parsed.x + ' ครั้ง'; }
           }
-        }
+        },
+        datalabels: datalabelsConfig
       },
       scales: {
         x: {
           beginAtZero: true,
-          ticks: {
-            stepSize: 1,
-            font: { family: 'Athiti' }
-          },
+          title: { display: true, text: 'จำนวน (ครั้ง)', font: { family: 'Athiti' } },
+          ticks: { stepSize: 1, font: { family: 'Athiti' } },
           grid: { color: 'rgba(0,0,0,0.05)' }
         },
         y: {
-          ticks: {
-            font: { family: 'Athiti', size: 12 },
-            autoSkip: false
-          },
+          ticks: { font: { family: 'Athiti', size: 12 }, autoSkip: false },
           grid: { display: false }
         }
       }
@@ -431,25 +568,40 @@ function renderTopCategoriesChart(topLevelCounts) {
   });
 }
 
-function renderDetailedDrugsChart(detailedItems) {
+function onCategoryFilterChange() {
+  renderDetailedDrugsChart();
+}
+
+function renderDetailedDrugsChart() {
   destroyChart('chart-detailed-drugs');
-  const ctx = document.getElementById('chart-detailed-drugs').getContext('2d');
+  var ctx = document.getElementById('chart-detailed-drugs').getContext('2d');
 
-  // Sort by count descending, filter out zero
-  const entries = Object.entries(detailedItems)
-    .filter(function(e) { return e[1] > 0; })
-    .sort(function(a, b) { return b[1] - a[1]; });
+  var selectedCat = document.getElementById('chart-category-filter').value;
+  var allItemCounts = currentDashboardData ? currentDashboardData.counseling.allItemCounts : {};
+  var fieldConfig = currentFieldConfig || [];
 
-  // If no data, show all items with 0
-  const labels = entries.length > 0
-    ? entries.map(function(e) { return e[0]; })
-    : Object.keys(detailedItems);
-  const values = entries.length > 0
-    ? entries.map(function(e) { return e[1]; })
-    : Object.values(detailedItems);
+  // Filter fields by selected category, in array order, skip text and top-level-only
+  var filteredFields = fieldConfig.filter(function(f) {
+    return f.category === selectedCat;
+  });
 
-  const bgColors = labels.map(function(_, i) {
-    const palette = [COLORS.seaBreeze, COLORS.periwinkle, COLORS.honey];
+  // For categories with sub-items (5.1, 5.6), show only sub-items
+  var hasSubItems = filteredFields.some(function(f) { return f.subgroup !== null && f.subgroup !== undefined; });
+  if (hasSubItems) {
+    filteredFields = filteredFields.filter(function(f) { return f.subgroup !== null && f.subgroup !== undefined; });
+  }
+
+  var labels = filteredFields.map(function(f) { return f.label; });
+  var values = filteredFields.map(function(f) { return allItemCounts[f.key] || 0; });
+
+  if (labels.length === 0) {
+    labels = [TOP_LEVEL_LABELS[selectedCat] || selectedCat];
+    var topLevelCounts = currentDashboardData ? currentDashboardData.counseling.topLevelCounts : {};
+    values = [topLevelCounts[selectedCat] || 0];
+  }
+
+  var bgColors = labels.map(function(_, i) {
+    var palette = [COLORS.seaBreeze, COLORS.periwinkle, COLORS.honey];
     return palette[i % 3];
   });
 
@@ -476,22 +628,18 @@ function renderDetailedDrugsChart(detailedItems) {
           callbacks: {
             label: function(ctx) { return ctx.parsed.x + ' ครั้ง'; }
           }
-        }
+        },
+        datalabels: datalabelsConfig
       },
       scales: {
         x: {
           beginAtZero: true,
-          ticks: {
-            stepSize: 1,
-            font: { family: 'Athiti' }
-          },
+          title: { display: true, text: 'จำนวน (ครั้ง)', font: { family: 'Athiti' } },
+          ticks: { stepSize: 1, font: { family: 'Athiti' } },
           grid: { color: 'rgba(0,0,0,0.05)' }
         },
         y: {
-          ticks: {
-            font: { family: 'Athiti', size: 11 },
-            autoSkip: false
-          },
+          ticks: { font: { family: 'Athiti', size: 11 }, autoSkip: false },
           grid: { display: false }
         }
       }
@@ -501,51 +649,58 @@ function renderDetailedDrugsChart(detailedItems) {
 
 function renderDailyDCChart(dcData) {
   destroyChart('chart-daily-dc');
-  const ctx = document.getElementById('chart-daily-dc').getContext('2d');
+  var ctx = document.getElementById('chart-daily-dc').getContext('2d');
 
-  const labels = dcData.map(function(d) { return 'วันที่ ' + d.day; });
-  const values = dcData.map(function(d) { return d.count; });
+  var labels = dcData.map(function(d) { return 'วันที่ ' + d.day; });
+  var values = dcData.map(function(d) { return d.count; });
 
   chartInstances['chart-daily-dc'] = new Chart(ctx, {
-    type: 'bar',
+    type: 'line',
     data: {
       labels: labels,
       datasets: [{
         label: 'จำนวน Discharge (ราย)',
         data: values,
-        backgroundColor: COLORS.periwinkle,
         borderColor: COLORS.periwinkle,
-        borderWidth: 1,
-        borderRadius: 6
+        backgroundColor: COLORS.periwinkleLight,
+        fill: true,
+        tension: 0.3,
+        pointBackgroundColor: COLORS.periwinkle,
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 7
       }]
     },
     options: {
-      indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: function(ctx) { return ctx.parsed.x + ' ราย'; }
+            label: function(ctx) { return ctx.parsed.y + ' ราย'; }
           }
+        },
+        datalabels: {
+          anchor: 'end',
+          align: 'top',
+          font: { family: 'Athiti', size: 11, weight: 'bold' },
+          color: '#555',
+          formatter: function(value) { return value > 0 ? value : ''; }
         }
       },
       scales: {
         x: {
-          beginAtZero: true,
-          ticks: {
-            stepSize: 1,
-            font: { family: 'Athiti' }
-          },
+          title: { display: true, text: 'วันที่', font: { family: 'Athiti' } },
+          ticks: { font: { family: 'Athiti', size: 12 } },
           grid: { color: 'rgba(0,0,0,0.05)' }
         },
         y: {
-          ticks: {
-            font: { family: 'Athiti', size: 12 },
-            autoSkip: false
-          },
-          grid: { display: false }
+          beginAtZero: true,
+          title: { display: true, text: 'จำนวน (ราย)', font: { family: 'Athiti' } },
+          ticks: { stepSize: 1, font: { family: 'Athiti' } },
+          grid: { color: 'rgba(0,0,0,0.05)' }
         }
       }
     }
@@ -554,10 +709,10 @@ function renderDailyDCChart(dcData) {
 
 function renderPEMonthlyChart(peData) {
   destroyChart('chart-pe-monthly');
-  const ctx = document.getElementById('chart-pe-monthly').getContext('2d');
+  var ctx = document.getElementById('chart-pe-monthly').getContext('2d');
 
-  const labels = peData.map(function(d) { return formatThaiMonth(d.month); });
-  const values = peData.map(function(d) { return d.totalErrors; });
+  var labels = peData.map(function(d) { return formatThaiMonth(d.month); });
+  var values = peData.map(function(d) { return d.totalErrors; });
 
   chartInstances['chart-pe-monthly'] = new Chart(ctx, {
     type: 'bar',
@@ -582,21 +737,18 @@ function renderPEMonthlyChart(peData) {
           callbacks: {
             label: function(ctx) { return ctx.parsed.x + ' ครั้ง'; }
           }
-        }
+        },
+        datalabels: datalabelsConfig
       },
       scales: {
         x: {
           beginAtZero: true,
-          ticks: {
-            stepSize: 1,
-            font: { family: 'Athiti' }
-          },
+          title: { display: true, text: 'จำนวน (ครั้ง)', font: { family: 'Athiti' } },
+          ticks: { stepSize: 1, font: { family: 'Athiti' } },
           grid: { color: 'rgba(0,0,0,0.05)' }
         },
         y: {
-          ticks: {
-            font: { family: 'Athiti', size: 12 }
-          },
+          ticks: { font: { family: 'Athiti', size: 12 } },
           grid: { display: false }
         }
       }
@@ -605,13 +757,124 @@ function renderPEMonthlyChart(peData) {
 }
 
 // ==========================================
+// Report Summary Page
+// ==========================================
+function loadReportSummary() {
+  google.script.run
+    .withSuccessHandler(function(months) {
+      var select = document.getElementById('report-month');
+      if (!select) return;
+      var currentVal = select.value;
+      select.innerHTML = '<option value="">-- กรุณาเลือกเดือน --</option>';
+
+      if (!months || months.length === 0) return;
+
+      months.forEach(function(ym) {
+        var opt = document.createElement('option');
+        opt.value = ym;
+        opt.textContent = formatThaiMonth(ym);
+        select.appendChild(opt);
+      });
+
+      if (currentVal && months.indexOf(currentVal) >= 0) {
+        select.value = currentVal;
+      } else {
+        select.value = months[0];
+      }
+
+      onReportMonthChange();
+    })
+    .withFailureHandler(function(err) {
+      console.error('Failed to load report months:', err);
+    })
+    .getAvailableMonths();
+}
+
+function onReportMonthChange() {
+  var yearMonth = document.getElementById('report-month').value;
+  if (!yearMonth) return;
+
+  showLoading();
+  google.script.run
+    .withSuccessHandler(function(data) {
+      hideLoading();
+      renderReportTable(data);
+    })
+    .withFailureHandler(function(err) {
+      hideLoading();
+      showToast('โหลดข้อมูลไม่สำเร็จ: ' + err.message, 'error');
+    })
+    .getReportSummaryData(yearMonth);
+}
+
+function renderReportTable(data) {
+  var c = data.counseling;
+  var allItems = c.allItemCounts || {};
+  var topLevel = c.topLevelCounts || {};
+
+  // Fill in all item counts
+  document.querySelectorAll('#report-table [data-field-key]').forEach(function(td) {
+    var key = td.dataset.fieldKey;
+    td.textContent = allItems[key] || 0;
+  });
+
+  // Fill in top-level counts and conditional ผลลัพธ์ (reuse shared getCategoryCount)
+  var grandTotal = 0;
+  document.querySelectorAll('#report-table [data-top-level]').forEach(function(td) {
+    var cat = td.dataset.topLevel;
+    var count = getCategoryCount(c, cat);
+    td.textContent = count;
+    grandTotal += count;
+
+    // Show/hide ผลลัพธ์ text based on count
+    var resultTd = td.parentElement.querySelector('.result-text');
+    if (resultTd) {
+      resultTd.textContent = count > 0 ? 'ผู้ป่วยเข้าใจปฏิบัติได้ถูกต้อง' : '';
+    }
+  });
+
+  // Summary rows
+  // รวมทั้งหมด (ครั้ง) = sum of all category header values displayed above
+  var totalEl = document.getElementById('report-total-sessions');
+  if (totalEl) totalEl.textContent = grandTotal;
+
+  // รวมทั้งหมด (ราย) = count of AN rows in month (with upsert, 1 row per AN per day)
+  var patientsEl = document.getElementById('report-total-patients');
+  if (patientsEl) patientsEl.textContent = c.totalUniquePatients;
+
+  var dcEl = document.getElementById('report-dc-total');
+  if (dcEl) dcEl.textContent = data.dcTotal;
+
+  var peEl = document.getElementById('report-pe-total');
+  if (peEl) peEl.textContent = data.peTotal;
+
+  var pePctEl = document.getElementById('report-pe-pct');
+  if (pePctEl) pePctEl.textContent = data.pePercentage.toFixed(2);
+}
+
+// ==========================================
+// Save Chart as Image (best-effort)
+// ==========================================
+function saveChartAsImage(canvasId) {
+  try {
+    var canvas = document.getElementById(canvasId);
+    var link = document.createElement('a');
+    link.download = canvasId + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  } catch (e) {
+    showToast('ไม่สามารถบันทึกรูปภาพได้', 'error');
+  }
+}
+
+// ==========================================
 // Utilities
 // ==========================================
 function formatThaiMonth(yearMonth) {
   if (!yearMonth) return '';
-  const parts = yearMonth.split('-');
-  const year = parseInt(parts[0], 10) + 543; // Buddhist Era
-  const monthIdx = parseInt(parts[1], 10) - 1;
+  var parts = yearMonth.split('-');
+  var year = parseInt(parts[0], 10) + 543;
+  var monthIdx = parseInt(parts[1], 10) - 1;
   return THAI_MONTHS[monthIdx] + ' ' + year;
 }
 
@@ -624,12 +887,12 @@ function hideLoading() {
 }
 
 function showToast(message, type) {
-  const container = document.getElementById('toast-container');
-  const toast = document.createElement('div');
+  var container = document.getElementById('toast-container');
+  var toast = document.createElement('div');
   toast.className = 'toast ' + (type || 'info');
 
-  const icon = type === 'success' ? 'fa-check-circle' :
-               type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
+  var icon = type === 'success' ? 'fa-check-circle' :
+             type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
 
   toast.innerHTML = '<i class="fa-solid ' + icon + '"></i> ' + message;
   container.appendChild(toast);

@@ -1,0 +1,149 @@
+<div class="page-header">
+  <h1><i class="fa-solid fa-file-lines"></i> Report Summary</h1>
+  <p>สรุปข้อมูลรายเดือน</p>
+</div>
+
+<!-- Month Selector -->
+<div class="month-selector">
+  <label><i class="fa-solid fa-calendar"></i> เลือกเดือน:</label>
+  <select id="report-month" onchange="onReportMonthChange()">
+    <option value="">-- กรุณาเลือกเดือน --</option>
+  </select>
+</div>
+
+<div class="card full-width">
+  <div style="overflow-x: auto;">
+    <table class="report-table" id="report-table">
+      <thead>
+        <tr>
+          <th class="col-detail">รายละเอียด</th>
+          <th class="col-count">Discharge Counseling (ครั้ง)</th>
+          <th class="col-result">ผลลัพธ์</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- 5.1 Section -->
+        <tr class="section-header-row">
+          <td>๕.๑ แนะนำการใช้ยาเทคนิคพิเศษ</td>
+          <td data-top-level="5.1">-</td>
+          <td class="result-text">ผู้ป่วยเข้าใจปฏิบัติได้ถูกต้อง</td>
+        </tr>
+        <tr class="subgroup-row"><td colspan="3">ยาสูดพ่นทางปาก</td></tr>
+        <tr class="item-row"><td>Ventolin MDI</td><td data-field-key="Cat_5_1_InhalerOral_Ventolin_MDI">-</td><td></td></tr>
+        <tr class="item-row"><td>Berodual MDI</td><td data-field-key="Cat_5_1_InhalerOral_Berodual_MDI">-</td><td></td></tr>
+        <tr class="item-row"><td>Budesonide MDI</td><td data-field-key="Cat_5_1_InhalerOral_Budesonide_MDI">-</td><td></td></tr>
+        <tr class="item-row"><td>Seretide Accuhaler</td><td data-field-key="Cat_5_1_InhalerOral_Seretide_Accuhaler">-</td><td></td></tr>
+        <tr class="item-row"><td>Symbicort Turbuhaler</td><td data-field-key="Cat_5_1_InhalerOral_Symbicort_Turbuhaler">-</td><td></td></tr>
+        <tr class="item-row"><td>Seretide Evohaler</td><td data-field-key="Cat_5_1_InhalerOral_Seretide_Evohaler">-</td><td></td></tr>
+        <tr class="item-row"><td>Spiriva Handihaler</td><td data-field-key="Cat_5_1_InhalerOral_Spiriva_Handihaler">-</td><td></td></tr>
+        <tr class="item-row"><td>Spiolto Respimat</td><td data-field-key="Cat_5_1_InhalerOral_Spiolto_Respimat">-</td><td></td></tr>
+        <tr class="item-row"><td>Spiriva Respimat</td><td data-field-key="Cat_5_1_InhalerOral_Spiriva_Respimat">-</td><td></td></tr>
+        <tr class="item-row"><td>Anoro Elipta</td><td data-field-key="Cat_5_1_InhalerOral_Anoro_Elipta">-</td><td></td></tr>
+        <tr class="item-row"><td>Trelegy Ellipta</td><td data-field-key="Cat_5_1_InhalerOral_Trelegy_Ellipta">-</td><td></td></tr>
+        <tr class="item-row"><td>via Spacer</td><td data-field-key="Cat_5_1_InhalerOral_Spacer">-</td><td></td></tr>
+
+        <tr class="subgroup-row"><td colspan="3">ยาพ่นจมูก</td></tr>
+        <tr class="item-row"><td>Rhinocort Nasal Spray</td><td data-field-key="Cat_5_1_NasalSpray_Rhinocort">-</td><td></td></tr>
+        <tr class="item-row"><td>Avamys Nasal Spray</td><td data-field-key="Cat_5_1_NasalSpray_Avamys">-</td><td></td></tr>
+        <tr class="item-row"><td>ยาหยอดจมูก</td><td data-field-key="Cat_5_1_NasalDrop">-</td><td></td></tr>
+        <tr class="item-row"><td>ล้างจมูก</td><td data-field-key="Cat_5_1_NasalWash">-</td><td></td></tr>
+        <tr class="item-row"><td>Miacalcic Nasal Spray</td><td data-field-key="Cat_5_1_Miacalcic_Nasal_Spray">-</td><td></td></tr>
+
+        <tr class="subgroup-row"><td colspan="3">ยาฉีดเบาหวาน</td></tr>
+        <tr class="item-row"><td>Insulin Syringe</td><td data-field-key="Cat_5_1_DiabetesInj_Insulin_Syringe">-</td><td></td></tr>
+        <tr class="item-row"><td>Novomix Penfilled</td><td data-field-key="Cat_5_1_DiabetesInj_Novomix_Penfilled">-</td><td></td></tr>
+        <tr class="item-row"><td>Insulin Glargine</td><td data-field-key="Cat_5_1_DiabetesInj_Insulin_Glargine">-</td><td></td></tr>
+        <tr class="item-row"><td>Gensulin Penfilled</td><td data-field-key="Cat_5_1_DiabetesInj_Gensulin_Penfilled">-</td><td></td></tr>
+        <tr class="item-row"><td>Semaglutide</td><td data-field-key="Cat_5_1_DiabetesInj_Semaglutide">-</td><td></td></tr>
+
+        <tr class="subgroup-row"><td colspan="3">ยาเทคนิคพิเศษอื่น ๆ</td></tr>
+        <tr class="item-row"><td>การผสมยาน้ำเด็ก</td><td data-field-key="Cat_5_1_SpecialOther_ChildLiquidMix">-</td><td></td></tr>
+        <tr class="item-row"><td>ยาหยอดตา</td><td data-field-key="Cat_5_1_SpecialOther_EyeDrop">-</td><td></td></tr>
+        <tr class="item-row"><td>ยาป้ายตา</td><td data-field-key="Cat_5_1_SpecialOther_EyeOintment">-</td><td></td></tr>
+        <tr class="item-row"><td>ยาอมใต้ลิ้น</td><td data-field-key="Cat_5_1_SpecialOther_Sublingual">-</td><td></td></tr>
+        <tr class="item-row"><td>ยาเหน็บทวาร/สวนทวาร</td><td data-field-key="Cat_5_1_SpecialOther_RectalSupp">-</td><td></td></tr>
+        <tr class="item-row"><td>ยาเหน็บช่องคลอด</td><td data-field-key="Cat_5_1_SpecialOther_VaginalSupp">-</td><td></td></tr>
+        <tr class="item-row"><td>ยาหยอดหู</td><td data-field-key="Cat_5_1_SpecialOther_EarDrop">-</td><td></td></tr>
+        <tr class="item-row"><td>Enoxaparin</td><td data-field-key="Cat_5_1_SpecialOther_Enoxaparin">-</td><td></td></tr>
+        <tr class="item-row"><td>Fentanyl patch</td><td data-field-key="Cat_5_1_SpecialOther_Fentanyl_Patch">-</td><td></td></tr>
+        <tr class="item-row"><td>Alendronate</td><td data-field-key="Cat_5_1_SpecialOther_Alendronate">-</td><td></td></tr>
+
+        <!-- 5.2 - 5.5 -->
+        <tr class="section-header-row">
+          <td>๕.๒ แนะนำการใช้ยา Warfarin</td>
+          <td data-top-level="5.2">-</td>
+          <td class="result-text">ผู้ป่วยเข้าใจปฏิบัติได้ถูกต้อง</td>
+        </tr>
+        <tr class="section-header-row">
+          <td>๕.๓ แนะนำการใช้ยาในผู้ป่วย Tuberculosis รายใหม่</td>
+          <td data-top-level="5.3">-</td>
+          <td class="result-text">ผู้ป่วยเข้าใจปฏิบัติได้ถูกต้อง</td>
+        </tr>
+        <tr class="section-header-row">
+          <td>๕.๔ ผู้ป่วยพม่า ออกฉลากภาษาพม่า</td>
+          <td data-top-level="5.4">-</td>
+          <td class="result-text">ผู้ป่วยเข้าใจปฏิบัติได้ถูกต้อง</td>
+        </tr>
+        <tr class="section-header-row">
+          <td>๕.๕ แนะนำ ผู้ป่วย Stroke case</td>
+          <td data-top-level="5.5">-</td>
+          <td class="result-text">ผู้ป่วยเข้าใจปฏิบัติได้ถูกต้อง</td>
+        </tr>
+
+        <!-- 5.6 SCARs Section -->
+        <tr class="section-header-row">
+          <td>๕.๖ แนะนำ ผู้ป่วยรายใหม่ที่ได้รับยาเสี่ยงต่อการเกิด SCARs</td>
+          <td data-top-level="5.6">-</td>
+          <td class="result-text">ผู้ป่วยเข้าใจปฏิบัติได้ถูกต้อง</td>
+        </tr>
+        <tr class="item-row"><td>Allopurinol</td><td data-field-key="Cat_5_6_SCARs_Allopurinol">-</td><td></td></tr>
+        <tr class="item-row"><td>Trimethoprim + Sulfamethoxazole (Bactrim)</td><td data-field-key="Cat_5_6_SCARs_TMP_SMX">-</td><td></td></tr>
+        <tr class="item-row"><td>Carbamazepine</td><td data-field-key="Cat_5_6_SCARs_Carbamazepine">-</td><td></td></tr>
+        <tr class="item-row"><td>Phenobarbital</td><td data-field-key="Cat_5_6_SCARs_Phenobarbital">-</td><td></td></tr>
+        <tr class="item-row"><td>Phenytoin</td><td data-field-key="Cat_5_6_SCARs_Phenytoin">-</td><td></td></tr>
+        <tr class="item-row"><td>Nevirapine</td><td data-field-key="Cat_5_6_SCARs_Nevirapine">-</td><td></td></tr>
+
+        <!-- 5.7 ARV -->
+        <tr class="section-header-row">
+          <td>๕.๗ แนะนำการใช้ยาในผู้ป่วย ARV รายใหม่</td>
+          <td data-top-level="5.7">-</td>
+          <td class="result-text">ผู้ป่วยเข้าใจปฏิบัติได้ถูกต้อง</td>
+        </tr>
+
+        <!-- 5.8 อื่น ๆ -->
+        <tr class="section-header-row">
+          <td>๕.๘ อื่น ๆ</td>
+          <td data-top-level="5.8">-</td>
+          <td class="result-text">ผู้ป่วยเข้าใจปฏิบัติได้ถูกต้อง</td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr class="summary-highlight">
+          <td>รวมทั้งหมด (ครั้ง)</td>
+          <td id="report-total-sessions">-</td>
+          <td></td>
+        </tr>
+        <tr class="summary-row">
+          <td>รวมทั้งหมด (ราย)</td>
+          <td id="report-total-patients">-</td>
+          <td></td>
+        </tr>
+        <tr class="summary-row">
+          <td>จำนวนผู้ป่วยกลับบ้านทั้งหมด</td>
+          <td id="report-dc-total">-</td>
+          <td></td>
+        </tr>
+        <tr class="summary-row">
+          <td>Prescribing Error จากการทำ MR ในผู้ป่วยที่ Discharge</td>
+          <td id="report-pe-total">-</td>
+          <td></td>
+        </tr>
+        <tr class="summary-row">
+          <td>ร้อยละของ Prescribing Error จากการทำ MR</td>
+          <td id="report-pe-pct">-</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>

@@ -9,13 +9,16 @@
   <select id="dashboard-month" onchange="onMonthChange()">
     <option value="">-- กรุณาเลือกเดือน --</option>
   </select>
+  <button class="btn btn-secondary btn-sm" onclick="loadDashboard()" title="รีเฟรชข้อมูล">
+    <i class="fa-solid fa-rotate-right"></i> รีเฟรช
+  </button>
 </div>
 
 <!-- Stat Cards -->
 <div class="stat-cards">
   <div class="stat-card">
     <div class="stat-value" id="stat-counseling">-</div>
-    <div class="stat-label">Counseling ทั้งหมด (ครั้ง)</div>
+    <div class="stat-label">Counseling ทั้งหมด (คน)</div>
   </div>
   <div class="stat-card">
     <div class="stat-value" id="stat-discharge">-</div>
@@ -32,6 +35,7 @@
   <div class="card-header">
     <i class="fa-solid fa-table" style="color: var(--periwinkle);"></i>
     สรุปข้อมูลรายเดือน
+    <span class="chart-month-label" id="summary-month-label"></span>
   </div>
   <div style="overflow-x: auto;">
     <table class="summary-table">
@@ -54,6 +58,28 @@
   </div>
 </div>
 
+<!-- SCARs Summary Table -->
+<div class="card full-width" id="scars-table-card" style="margin-bottom: 20px;">
+  <div class="card-header">
+    <i class="fa-solid fa-shield-virus" style="color: var(--sea-breeze);"></i>
+    สรุปข้อมูล ยาเสี่ยงต่อการเกิด SCARs
+    <span class="chart-month-label" id="scars-month-label"></span>
+  </div>
+  <div style="overflow-x: auto;">
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>รายการยา</th>
+          <th>จำนวน (ครั้ง)</th>
+        </tr>
+      </thead>
+      <tbody id="scars-table-body">
+        <tr><td colspan="2" style="text-align:center; color: var(--text-light);">กรุณาเลือกเดือน</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
 <!-- Charts Grid -->
 <div class="dashboard-grid">
   <!-- Chart 1: Top-level categories -->
@@ -61,28 +87,44 @@
     <div class="card-header">
       <i class="fa-solid fa-chart-bar" style="color: var(--honey);"></i>
       Discharge Counseling รายเดือน
+      <span class="chart-month-label" id="chart1-month-label"></span>
     </div>
     <div class="chart-container">
       <canvas id="chart-top-categories"></canvas>
     </div>
   </div>
 
-  <!-- Chart 2: Detailed drugs under 5.1 -->
+  <!-- Chart 2: Detailed drugs by category -->
   <div class="card">
     <div class="card-header">
       <i class="fa-solid fa-pills" style="color: var(--sea-breeze);"></i>
-      Discharge Counseling ยาเทคนิคพิเศษ จำแนกตามชนิดยา รายเดือน
+      Discharge Counseling จำแนกตามชนิดยา รายเดือน
+      <span class="chart-month-label" id="chart2-month-label"></span>
+    </div>
+    <div class="chart-filter">
+      <label>กรองตามหมวด:</label>
+      <select id="chart-category-filter" onchange="onCategoryFilterChange()">
+        <option value="5.1">1. แนะนำการใช้ยาเทคนิคพิเศษ</option>
+        <option value="5.2">2. แนะนำการใช้ยา Warfarin</option>
+        <option value="5.3">3. แนะนำการใช้ยาในผู้ป่วย TB รายใหม่</option>
+        <option value="5.4">4. ผู้ป่วยพม่า ออกฉลากภาษาพม่า</option>
+        <option value="5.5">5. แนะนำ ผู้ป่วย Stroke Case</option>
+        <option value="5.6">6. แนะนำ ผู้ป่วยที่ได้รับยาเสี่ยง SCARs</option>
+        <option value="5.7">7. แนะนำการใช้ยาในผู้ป่วย ARV รายใหม่</option>
+        <option value="5.8">8. อื่น ๆ</option>
+      </select>
     </div>
     <div class="chart-container" style="min-height: 500px;">
       <canvas id="chart-detailed-drugs"></canvas>
     </div>
   </div>
 
-  <!-- Chart 3: Daily DC -->
+  <!-- Chart 3: Daily DC (line chart) -->
   <div class="card">
     <div class="card-header">
       <i class="fa-solid fa-bed" style="color: var(--periwinkle);"></i>
       จำนวน Discharge รายวัน
+      <span class="chart-month-label" id="chart3-month-label"></span>
     </div>
     <div class="chart-container">
       <canvas id="chart-daily-dc"></canvas>

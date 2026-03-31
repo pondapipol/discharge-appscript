@@ -23,7 +23,7 @@
     <span class="section-title">1. แนะนำการใช้ยาเทคนิคพิเศษ</span>
     <i class="fa-solid fa-chevron-down chevron"></i>
   </div>
-  <div id="section-5-1" class="section-body">
+  <div id="section-5-1" class="section-body multi-col">
 
     <!-- ยาสูดพ่นทางปาก -->
     <div class="subgroup-header">ยาสูดพ่นทางปาก</div>
@@ -70,6 +70,10 @@
     <div class="checkbox-item">
       <input type="checkbox" data-key="Cat_5_1_InhalerOral_Trelegy_Ellipta" id="cb-11">
       <label for="cb-11">Trelegy Ellipta</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_InhalerOral_Spacer" id="cb-spacer">
+      <label for="cb-spacer">via Spacer</label>
     </div>
 
     <!-- ยาพ่นจมูก -->
@@ -184,9 +188,52 @@
   <label for="cb-35">5. แนะนำ ผู้ป่วย Stroke Case</label>
 </div>
 
+<!-- 5.6 แนะนำ ผู้ป่วยรายใหม่ที่ได้รับยาเสี่ยงต่อการเกิด SCARs -->
+<div class="checkbox-section">
+  <div class="section-header" onclick="toggleSection('section-5-6')">
+    <span class="section-title">6. แนะนำ ผู้ป่วยรายใหม่ที่ได้รับยาเสี่ยงต่อการเกิด SCARs</span>
+    <i class="fa-solid fa-chevron-down chevron"></i>
+  </div>
+  <div id="section-5-6" class="section-body collapsed">
+    <div class="subgroup-header">ยาที่เสี่ยงต่อการเกิด SCARs</div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_6_SCARs_Allopurinol" id="cb-scars-1">
+      <label for="cb-scars-1">Allopurinol</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_6_SCARs_TMP_SMX" id="cb-scars-2">
+      <label for="cb-scars-2">Trimethoprim + Sulfamethoxazole (Bactrim)</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_6_SCARs_Carbamazepine" id="cb-scars-3">
+      <label for="cb-scars-3">Carbamazepine</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_6_SCARs_Phenobarbital" id="cb-scars-4">
+      <label for="cb-scars-4">Phenobarbital</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_6_SCARs_Phenytoin" id="cb-scars-5">
+      <label for="cb-scars-5">Phenytoin</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_6_SCARs_Nevirapine" id="cb-scars-6">
+      <label for="cb-scars-6">Nevirapine</label>
+    </div>
+  </div>
+</div>
+
 <div class="standalone-checkbox" onclick="toggleStandaloneCheckbox(this)">
-  <input type="checkbox" data-key="Cat_5_6_SJS_TEN_Risk" id="cb-36">
-  <label for="cb-36">6. แนะนำ ผู้ป่วยที่ได้รับยาที่เสี่ยงต่อการเกิด SCARs</label>
+  <input type="checkbox" data-key="Cat_5_7_ARV" id="cb-37">
+  <label for="cb-37">7. แนะนำการใช้ยาในผู้ป่วย ARV รายใหม่</label>
+</div>
+
+<div class="standalone-checkbox" onclick="toggleStandaloneCheckbox(this)">
+  <input type="checkbox" data-key="Cat_5_8_Other" id="cb-38" onchange="toggleOtherText()">
+  <label for="cb-38">8. อื่น ๆ</label>
+</div>
+<div id="other-text-container" class="other-text-wrapper" style="display: none;">
+  <input type="text" id="other-text" class="form-input" placeholder="ระบุรายละเอียด...">
 </div>
 
 <div class="btn-group">

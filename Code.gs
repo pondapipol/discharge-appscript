@@ -20,6 +20,7 @@ const COUNSELING_FIELDS = [
   { key: 'Cat_5_1_InhalerOral_Spiriva_Respimat', label: 'Spiriva Respimat', category: '5.1', subgroup: 'ยาสูดพ่นทางปาก' },
   { key: 'Cat_5_1_InhalerOral_Anoro_Elipta', label: 'Anoro Elipta', category: '5.1', subgroup: 'ยาสูดพ่นทางปาก' },
   { key: 'Cat_5_1_InhalerOral_Trelegy_Ellipta', label: 'Trelegy Ellipta', category: '5.1', subgroup: 'ยาสูดพ่นทางปาก' },
+  { key: 'Cat_5_1_InhalerOral_Spacer', label: 'via Spacer', category: '5.1', subgroup: 'ยาสูดพ่นทางปาก' },
   // 5.1 ยาพ่นจมูก
   { key: 'Cat_5_1_NasalSpray_Rhinocort', label: 'Rhinocort Nasal Spray', category: '5.1', subgroup: 'ยาพ่นจมูก' },
   { key: 'Cat_5_1_NasalSpray_Avamys', label: 'Avamys Nasal Spray', category: '5.1', subgroup: 'ยาพ่นจมูก' },
@@ -49,7 +50,18 @@ const COUNSELING_FIELDS = [
   { key: 'Cat_5_3_TB', label: '3. แนะนำการใช้ยาในผู้ป่วย Tuberculosis รายใหม่', category: '5.3', subgroup: null },
   { key: 'Cat_5_4_Myanmar_Label', label: '4. ผู้ป่วยพม่า ออกฉลากภาษาพม่า', category: '5.4', subgroup: null },
   { key: 'Cat_5_5_Stroke_Case', label: '5. แนะนำ ผู้ป่วย Stroke Case', category: '5.5', subgroup: null },
-  { key: 'Cat_5_6_SJS_TEN_Risk', label: '6. แนะนำ ผู้ป่วยที่ได้รับยาที่เสี่ยงต่อการเกิด SCARs', category: '5.6', subgroup: null },
+  { key: 'Cat_5_6_SJS_TEN_Risk', label: '6. แนะนำ ผู้ป่วยรายใหม่ที่ได้รับยาเสี่ยงต่อการเกิด SCARs', category: '5.6', subgroup: null },
+  // 5.6 ยาที่เสี่ยงต่อการเกิด SCARs
+  { key: 'Cat_5_6_SCARs_Allopurinol', label: 'Allopurinol', category: '5.6', subgroup: 'ยาที่เสี่ยงต่อการเกิด SCARs' },
+  { key: 'Cat_5_6_SCARs_TMP_SMX', label: 'Trimethoprim + Sulfamethoxazole (Bactrim)', category: '5.6', subgroup: 'ยาที่เสี่ยงต่อการเกิด SCARs' },
+  { key: 'Cat_5_6_SCARs_Carbamazepine', label: 'Carbamazepine', category: '5.6', subgroup: 'ยาที่เสี่ยงต่อการเกิด SCARs' },
+  { key: 'Cat_5_6_SCARs_Phenobarbital', label: 'Phenobarbital', category: '5.6', subgroup: 'ยาที่เสี่ยงต่อการเกิด SCARs' },
+  { key: 'Cat_5_6_SCARs_Phenytoin', label: 'Phenytoin', category: '5.6', subgroup: 'ยาที่เสี่ยงต่อการเกิด SCARs' },
+  { key: 'Cat_5_6_SCARs_Nevirapine', label: 'Nevirapine', category: '5.6', subgroup: 'ยาที่เสี่ยงต่อการเกิด SCARs' },
+  // 5.7 - 5.8
+  { key: 'Cat_5_7_ARV', label: '7. แนะนำการใช้ยาในผู้ป่วย ARV รายใหม่', category: '5.7', subgroup: null },
+  { key: 'Cat_5_8_Other', label: '8. อื่น ๆ', category: '5.8', subgroup: null },
+  { key: 'Cat_5_8_Other_Text', label: 'รายละเอียด อื่น ๆ', category: '5.8', subgroup: null, type: 'text' },
 ];
 
 // ==========================================
@@ -107,7 +119,14 @@ function setupSheets() {
   // Counseling_Raw headers
   const counselingHeaders = ['Timestamp', 'CounselingDate', 'AN'];
   COUNSELING_FIELDS.forEach(f => counselingHeaders.push(f.key));
-  getOrCreateSheet(SHEET_COUNSELING, counselingHeaders);
+  const cSheet = getOrCreateSheet(SHEET_COUNSELING, counselingHeaders);
+  // Format AN column as plain text to preserve leading zeros
+  cSheet.getRange('C:C').setNumberFormat('@');
+  // Update headers if sheet already existed (new columns added)
+  if (cSheet.getLastColumn() < counselingHeaders.length || cSheet.getLastColumn() > counselingHeaders.length) {
+    cSheet.getRange(1, 1, 1, counselingHeaders.length).setValues([counselingHeaders]);
+    cSheet.getRange(1, 1, 1, counselingHeaders.length).setFontWeight('bold');
+  }
 
   // DC_Raw headers
   getOrCreateSheet(SHEET_DC, ['Timestamp', 'DischargeDate', 'DischargeCount']);
@@ -143,20 +162,22 @@ function setupReportSummary() {
     return '=COUNTIFS(' + DATE_FILTER + ',Counseling_Raw!' + col + ':' + col + ',TRUE)';
   }
 
-  // Build rows: [label, value_or_formula]
+  const RESULT_TEXT = 'ผู้ป่วยเข้าใจปฏิบัติได้ถูกต้อง';
+
+  // Build rows: [label, value_or_formula, result_text]
   const rows = [];
   let currentRow = 1;
 
   // Row 1: Month selector
-  rows.push(['ประจำเดือน', new Date(new Date().getFullYear(), new Date().getMonth(), 1)]);
+  rows.push(['ประจำเดือน', new Date(new Date().getFullYear(), new Date().getMonth(), 1), '']);
   currentRow++;
 
   // Row 2: empty
-  rows.push(['', '']);
+  rows.push(['', '', '']);
   currentRow++;
 
   // Row 3: Headers
-  rows.push(['รายละเอียด', 'Discharge Counseling (ครั้ง)']);
+  rows.push(['รายละเอียด', 'Discharge Counseling (ครั้ง)', 'ผลลัพธ์']);
   currentRow++;
 
   // Track which rows are section headers / sub-headers for formatting
@@ -164,82 +185,113 @@ function setupReportSummary() {
   const subHeaderRows = [];
   const formulaRows = []; // [row, formula]
 
-  // 5.1 Section header
-  sectionHeaderRows.push(currentRow);
-  rows.push(['1. แนะนำการใช้ยาเทคนิคพิเศษ', '']); // Will add SUM formula after
-  const section51HeaderRow = currentRow;
-  currentRow++;
-
-  // Track 5.1 item formula row numbers for the section SUM
-  const item51Rows = [];
-
-  let lastSubgroup = '';
-  COUNSELING_FIELDS.forEach((field, idx) => {
-    if (field.category !== '5.1') return;
-
-    // Sub-group header
-    if (field.subgroup && field.subgroup !== lastSubgroup) {
-      subHeaderRows.push(currentRow);
-      rows.push([field.subgroup, '']);
-      currentRow++;
-      lastSubgroup = field.subgroup;
-    }
-
-    // Item row with formula
-    item51Rows.push(currentRow);
-    formulaRows.push([currentRow, drugFormula(idx)]);
-    rows.push([field.label, '']); // formula set later
+  // --- Helper to build a category with sub-items (used for 5.1 and 5.6) ---
+  function buildCategoryWithItems(category, headerLabel) {
+    sectionHeaderRows.push(currentRow);
+    rows.push([headerLabel, '', RESULT_TEXT]);
+    const sectionHeaderRow = currentRow;
     currentRow++;
-  });
 
-  // 5.2 - 5.6
+    const itemRows = [];
+    let lastSub = '';
+    COUNSELING_FIELDS.forEach((field, idx) => {
+      if (field.category !== category) return;
+      if (field.subgroup === null) return; // skip top-level entry (e.g. Cat_5_6_SJS_TEN_Risk)
+      if (field.type === 'text') return; // skip text fields
+
+      // Sub-group header
+      if (field.subgroup && field.subgroup !== lastSub) {
+        subHeaderRows.push(currentRow);
+        rows.push([field.subgroup, '', '']);
+        currentRow++;
+        lastSub = field.subgroup;
+      }
+
+      itemRows.push(currentRow);
+      formulaRows.push([currentRow, drugFormula(idx)]);
+      rows.push([field.label, '', '']);
+      currentRow++;
+    });
+
+    return { sectionHeaderRow, itemRows };
+  }
+
+  // 5.1 Section
+  const sec51 = buildCategoryWithItems('5.1', '1. แนะนำการใช้ยาเทคนิคพิเศษ');
+
+  // 5.2 - 5.5 (standalone categories)
   const topLevelLabels = {
     '5.2': '2. แนะนำการใช้ยา Warfarin',
     '5.3': '3. แนะนำการใช้ยาในผู้ป่วย Tuberculosis รายใหม่',
     '5.4': '4. ผู้ป่วยพม่า ออกฉลากภาษาพม่า',
-    '5.5': '5. แนะนำ ผู้ป่วย Stroke Case',
-    '5.6': '6. แนะนำ ผู้ป่วยที่ได้รับยาที่เสี่ยงต่อการเกิด SCARs'
+    '5.5': '5. แนะนำ ผู้ป่วย Stroke Case'
   };
 
-  const topLevelRows = {};
-  ['5.2', '5.3', '5.4', '5.5', '5.6'].forEach(cat => {
-    const fieldIdx = COUNSELING_FIELDS.findIndex(f => f.category === cat);
+  // Track all top-level category header rows for total SUM
+  const allCategoryHeaderRows = [sec51.sectionHeaderRow];
+
+  ['5.2', '5.3', '5.4', '5.5'].forEach(cat => {
+    const fieldIdx = COUNSELING_FIELDS.findIndex(f => f.category === cat && f.subgroup === null);
     if (fieldIdx >= 0) {
       sectionHeaderRows.push(currentRow);
-      topLevelRows[cat] = currentRow;
+      allCategoryHeaderRows.push(currentRow);
       formulaRows.push([currentRow, drugFormula(fieldIdx)]);
-      rows.push([topLevelLabels[cat], '']);
+      rows.push([topLevelLabels[cat], '', RESULT_TEXT]);
       currentRow++;
     }
   });
 
+  // 5.6 Section (with sub-items like 5.1)
+  const sec56 = buildCategoryWithItems('5.6', '6. แนะนำ ผู้ป่วยรายใหม่ที่ได้รับยาเสี่ยงต่อการเกิด SCARs');
+  allCategoryHeaderRows.push(sec56.sectionHeaderRow);
+
+  // 5.7 ARV
+  const field57Idx = COUNSELING_FIELDS.findIndex(f => f.category === '5.7');
+  if (field57Idx >= 0) {
+    sectionHeaderRows.push(currentRow);
+    allCategoryHeaderRows.push(currentRow);
+    formulaRows.push([currentRow, drugFormula(field57Idx)]);
+    rows.push(['7. แนะนำการใช้ยาในผู้ป่วย ARV รายใหม่', '', RESULT_TEXT]);
+    currentRow++;
+  }
+
+  // 5.8 อื่น ๆ
+  const field58Idx = COUNSELING_FIELDS.findIndex(f => f.key === 'Cat_5_8_Other');
+  if (field58Idx >= 0) {
+    sectionHeaderRows.push(currentRow);
+    allCategoryHeaderRows.push(currentRow);
+    formulaRows.push([currentRow, drugFormula(field58Idx)]);
+    rows.push(['8. อื่น ๆ', '', '']);
+    currentRow++;
+  }
+
   // Empty row
-  rows.push(['', '']);
+  rows.push(['', '', '']);
   currentRow++;
 
   // Summary rows
   const totalSessionsRow = currentRow;
-  rows.push(['รวมทั้งหมด (ครั้ง)', '']);
+  rows.push(['รวมทั้งหมด (ครั้ง)', '', '']);
   currentRow++;
 
   const totalPatientsRow = currentRow;
-  rows.push(['รวมทั้งหมด (ราย)', '']);
+  rows.push(['รวมทั้งหมด (ราย)', 'นับจาก AN ที่ลงประจำเดือนที่เลือก', '']);
   currentRow++;
 
   const totalDCRow = currentRow;
-  rows.push(['จำนวนผู้ป่วยกลับบ้านทั้งหมด', '']);
+  rows.push(['จำนวนผู้ป่วยกลับบ้านทั้งหมด', 'จำนวนผู้ป่วยที่ Discharge ประจำเดือนที่เลือก', '']);
   currentRow++;
 
   const totalPERow = currentRow;
-  rows.push(['Prescribing Error จากการทำ MR ในผู้ป่วยที่ Discharge', '']);
+  rows.push(['Prescribing Error จากการทำ MR ในผู้ป่วยที่ Discharge', 'จำนวน Prescribing Error ประจำเดือนที่เลือก', '']);
   currentRow++;
 
   const pePctRow = currentRow;
-  rows.push(['ร้อยละของ Prescribing Error จากการทำ MR', '']);
+  rows.push(['ร้อยละของ Prescribing Error จากการทำ MR', 'Percentage of Prescribing Error from total Discharge', '']);
   currentRow++;
 
   // Write all labels and static values
-  sheet.getRange(1, 1, rows.length, 2).setValues(rows);
+  sheet.getRange(1, 1, rows.length, 3).setValues(rows);
 
   // Set B1 as date format
   sheet.getRange(1, 2).setNumberFormat('MMMM yyyy');
@@ -250,27 +302,34 @@ function setupReportSummary() {
   });
 
   // 5.1 header: SUM of all individual 5.1 item rows
-  const sumRefs = item51Rows.map(r => 'B' + r).join(',');
-  sheet.getRange(section51HeaderRow, 2).setFormula('=SUM(' + sumRefs + ')');
+  if (sec51.itemRows.length > 0) {
+    const sumRefs51 = sec51.itemRows.map(r => 'B' + r).join(',');
+    sheet.getRange(sec51.sectionHeaderRow, 2).setFormula('=SUM(' + sumRefs51 + ')');
+  }
 
-  // Total sessions = count of rows in the month
-  sheet.getRange(totalSessionsRow, 2).setFormula(
-    '=COUNTIFS(Counseling_Raw!B:B,">="&' + START + ',Counseling_Raw!B:B,"<="&' + END + ')'
-  );
+  // 5.6 header: SUM of all individual 5.6 sub-item rows (like 5.1)
+  if (sec56.itemRows.length > 0) {
+    const sumRefs56 = sec56.itemRows.map(r => 'B' + r).join(',');
+    sheet.getRange(sec56.sectionHeaderRow, 2).setFormula('=SUM(' + sumRefs56 + ')');
+  }
 
-  // Total unique patients
+  // Total (ครั้ง) = SUM of all category header rows (5.1 + 5.2 + ... + 5.8)
+  const totalSumRefs = allCategoryHeaderRows.map(r => 'B' + r).join(',');
+  sheet.getRange(totalSessionsRow, 2).setFormula('=SUM(' + totalSumRefs + ')');
+
+  // Total (ราย) = count of AN entries in the month (with upsert, each AN per day = 1 row)
   sheet.getRange(totalPatientsRow, 2).setFormula(
-    '=IFERROR(COUNTA(UNIQUE(FILTER(Counseling_Raw!C:C,Counseling_Raw!B:B>=DATE(YEAR($B$1),MONTH($B$1),1),Counseling_Raw!B:B<=EOMONTH($B$1,0)))),0)'
+    '=COUNTIFS(Counseling_Raw!B2:B,">="&' + START + ',Counseling_Raw!B2:B,"<="&' + END + ')'
   );
 
-  // Total discharges from DC_Raw
+  // Total discharges = SUM of DischargeCount from DC_Raw in selected month
   sheet.getRange(totalDCRow, 2).setFormula(
-    '=IFERROR(SUMIFS(DC_Raw!C:C,DC_Raw!B:B,">="&DATE(YEAR($B$1),MONTH($B$1),1),DC_Raw!B:B,"<="&EOMONTH($B$1,0)),0)'
+    '=IFERROR(SUMIFS(DC_Raw!C2:C,DC_Raw!B2:B,">="&' + START + ',DC_Raw!B2:B,"<="&' + END + '),0)'
   );
 
-  // Total PE from PE_Raw
+  // Total PE = SUM of ErrorCount from PE_Raw in selected month
   sheet.getRange(totalPERow, 2).setFormula(
-    '=IFERROR(SUMIFS(PE_Raw!C:C,PE_Raw!B:B,">="&DATE(YEAR($B$1),MONTH($B$1),1),PE_Raw!B:B,"<="&EOMONTH($B$1,0)),0)'
+    '=IFERROR(SUMIFS(PE_Raw!C2:C,PE_Raw!B2:B,">="&' + START + ',PE_Raw!B2:B,"<="&' + END + '),0)'
   );
 
   // PE percentage
@@ -284,15 +343,15 @@ function setupReportSummary() {
   // ==========================================
 
   // Title row
-  sheet.getRange(1, 1, 1, 2).setFontWeight('bold').setFontSize(12);
+  sheet.getRange(1, 1, 1, 3).setFontWeight('bold').setFontSize(12);
   sheet.getRange(1, 2).setBackground('#FFF3D6');
 
   // Header row
-  sheet.getRange(3, 1, 1, 2).setFontWeight('bold').setBackground('#A7B5FE').setFontColor('#FFFFFF');
+  sheet.getRange(3, 1, 1, 3).setFontWeight('bold').setBackground('#A7B5FE').setFontColor('#FFFFFF');
 
   // Section headers (bold, colored background)
   sectionHeaderRows.forEach(r => {
-    sheet.getRange(r, 1, 1, 2).setFontWeight('bold').setBackground('#E0F0F3');
+    sheet.getRange(r, 1, 1, 3).setFontWeight('bold').setBackground('#E0F0F3');
   });
 
   // Sub-group headers (semi-bold, light indent)
@@ -300,18 +359,26 @@ function setupReportSummary() {
     sheet.getRange(r, 1).setFontWeight('bold').setFontColor('#7BB8C0');
   });
 
-  // Summary rows (bold with top border)
+  // Summary rows (bold)
   [totalSessionsRow, totalPatientsRow, totalDCRow, totalPERow, pePctRow].forEach(r => {
-    sheet.getRange(r, 1, 1, 2).setFontWeight('bold');
+    sheet.getRange(r, 1, 1, 3).setFontWeight('bold');
   });
-  sheet.getRange(totalSessionsRow, 1, 1, 2).setBackground('#FFF3D6');
+  sheet.getRange(totalSessionsRow, 1, 1, 3).setBackground('#FFF3D6');
+  // Highlight summary B column descriptions
+  [totalPatientsRow, totalDCRow, totalPERow, pePctRow].forEach(r => {
+    sheet.getRange(r, 2).setBackground('#FFFF00');
+  });
 
   // Column widths
   sheet.setColumnWidth(1, 400);
-  sheet.setColumnWidth(2, 200);
+  sheet.setColumnWidth(2, 250);
+  sheet.setColumnWidth(3, 250);
 
-  // Center column B values
-  sheet.getRange(4, 2, rows.length - 3, 1).setHorizontalAlignment('center');
+  // Center column B values (data rows only, not summary)
+  const dataRowCount = totalSessionsRow - 4; // rows from 4 to totalSessionsRow-1
+  if (dataRowCount > 0) {
+    sheet.getRange(4, 2, dataRowCount, 1).setHorizontalAlignment('center');
+  }
 }
 
 // ==========================================
@@ -333,19 +400,43 @@ function submitCounselingData(formData) {
   }
 
   const sheet = getOrCreateSheet(SHEET_COUNSELING);
-  const row = [new Date(), new Date(formData.counselingDate), formData.an];
+  const data = sheet.getDataRange().getValues();
+  const targetDate = new Date(formData.counselingDate).toDateString();
+  const targetAN = String(formData.an);
 
+  // Check for existing row with same AN + same date
+  let existingRowIdx = -1;
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][2]) === targetAN && data[i][1] && new Date(data[i][1]).toDateString() === targetDate) {
+      existingRowIdx = i + 1; // 1-indexed sheet row
+      break;
+    }
+  }
+
+  if (existingRowIdx > 0 && !formData.forceUpsert) {
+    return { success: false, confirmUpsert: true, message: 'AN ' + targetAN + ' มีข้อมูลวันที่เดียวกันแล้ว ต้องการแทนที่ด้วยข้อมูลล่าสุดหรือไม่?' };
+  }
+
+  const row = [new Date(), new Date(formData.counselingDate), formData.an];
   COUNSELING_FIELDS.forEach(field => {
-    row.push(formData.checkboxes[field.key] === true);
+    if (field.type === 'text') {
+      row.push(formData.freeText || '');
+    } else {
+      row.push(formData.checkboxes[field.key] === true);
+    }
   });
 
-  sheet.appendRow(row);
-
-  // Format AN column as plain text to preserve leading zeros
-  const lastRow = sheet.getLastRow();
-  sheet.getRange(lastRow, 3).setNumberFormat('@');
-
-  return { success: true, message: 'บันทึกข้อมูล Counseling สำเร็จ' };
+  if (existingRowIdx > 0) {
+    // Update existing row
+    sheet.getRange(existingRowIdx, 1, 1, row.length).setValues([row]);
+    sheet.getRange(existingRowIdx, 3).setNumberFormat('@');
+    return { success: true, message: 'อัพเดทข้อมูล Counseling สำเร็จ' };
+  } else {
+    sheet.appendRow(row);
+    const lastRow = sheet.getLastRow();
+    sheet.getRange(lastRow, 3).setNumberFormat('@');
+    return { success: true, message: 'บันทึกข้อมูล Counseling สำเร็จ' };
+  }
 }
 
 // ==========================================
@@ -406,6 +497,35 @@ function submitPEData(formData) {
 }
 
 // ==========================================
+// Pre-check functions for DC/PE duplicate confirmation
+// ==========================================
+function checkExistingDC(dischargeDate) {
+  const sheet = getSpreadsheet().getSheetByName(SHEET_DC);
+  if (!sheet || sheet.getLastRow() <= 1) return { exists: false };
+  const data = sheet.getDataRange().getValues();
+  const targetDate = new Date(dischargeDate).toDateString();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][1] && new Date(data[i][1]).toDateString() === targetDate) {
+      return { exists: true, currentCount: data[i][2] || 0 };
+    }
+  }
+  return { exists: false };
+}
+
+function checkExistingPE(errorDate) {
+  const sheet = getSpreadsheet().getSheetByName(SHEET_PE);
+  if (!sheet || sheet.getLastRow() <= 1) return { exists: false };
+  const data = sheet.getDataRange().getValues();
+  const targetDate = new Date(errorDate).toDateString();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][1] && new Date(data[i][1]).toDateString() === targetDate) {
+      return { exists: true, currentCount: data[i][2] || 0 };
+    }
+  }
+  return { exists: false };
+}
+
+// ==========================================
 // Dashboard Data Functions
 // ==========================================
 function getAvailableMonths() {
@@ -455,49 +575,77 @@ function getCounselingSummaryByMonth(yearMonth) {
   const ss = getSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_COUNSELING);
   if (!sheet || sheet.getLastRow() <= 1) {
-    return { totalSessions: 0, topLevelCounts: {}, detailedItems: {} };
+    return { totalSessions: 0, totalUniquePatients: 0, topLevelCounts: {}, detailedItems: {}, allItemCounts: {}, scarsItems: {} };
   }
 
   const data = sheet.getDataRange().getValues();
-  const headers = data[0];
   const tz = Session.getScriptTimeZone();
 
-  const topLevelCounts = { '5.1': 0, '5.2': 0, '5.3': 0, '5.4': 0, '5.5': 0, '5.6': 0 };
-  const detailedItems = {};
-  let totalSessions = 0;
-
-  // Initialize detailed items for 5.1
-  COUNSELING_FIELDS.forEach(f => {
-    if (f.category === '5.1') {
-      detailedItems[f.label] = 0;
-    }
-  });
-
+  // Step 1: Filter rows for the month and deduplicate by (date+AN) keeping latest timestamp
+  const dedupMap = {}; // key: "dateStr|AN" -> { rowIdx, timestamp }
   for (let i = 1; i < data.length; i++) {
     const rowDate = data[i][1];
     if (!rowDate) continue;
     const rowYM = Utilities.formatDate(new Date(rowDate), tz, 'yyyy-MM');
     if (rowYM !== yearMonth) continue;
 
-    totalSessions++;
+    const dateStr = new Date(rowDate).toDateString();
+    const an = String(data[i][2]);
+    const key = dateStr + '|' + an;
+    const ts = new Date(data[i][0]).getTime();
+
+    if (!dedupMap[key] || ts > dedupMap[key].timestamp) {
+      dedupMap[key] = { rowIdx: i, timestamp: ts };
+    }
+  }
+
+  // Step 2: Aggregate from deduplicated rows only
+  const topLevelCounts = { '5.1': 0, '5.2': 0, '5.3': 0, '5.4': 0, '5.5': 0, '5.6': 0, '5.7': 0, '5.8': 0 };
+  const detailedItems = {};
+  const allItemCounts = {};
+  const scarsItems = {};
+
+  // Initialize
+  COUNSELING_FIELDS.forEach(f => {
+    if (f.type === 'text') return;
+    allItemCounts[f.key] = 0;
+    if (f.category === '5.1') detailedItems[f.label] = 0;
+    if (f.category === '5.6' && f.subgroup) scarsItems[f.label] = 0;
+  });
+
+  const dedupKeys = Object.keys(dedupMap);
+  const totalUniquePatients = dedupKeys.length;
+
+  dedupKeys.forEach(key => {
+    const i = dedupMap[key].rowIdx;
     let has51 = false;
+    let has56 = false;
 
     COUNSELING_FIELDS.forEach((field, idx) => {
-      const colIdx = idx + 3; // offset for Timestamp, Date, AN
+      if (field.type === 'text') return;
+      const colIdx = idx + 3;
       if (data[i][colIdx] === true) {
+        allItemCounts[field.key]++;
+
         if (field.category === '5.1') {
           has51 = true;
           detailedItems[field.label] = (detailedItems[field.label] || 0) + 1;
-        } else {
+        } else if (field.category === '5.6' && field.subgroup) {
+          has56 = true;
+          scarsItems[field.label] = (scarsItems[field.label] || 0) + 1;
+        } else if (field.category === '5.6' && field.subgroup === null) {
+          // Skip top-level 5.6 entry (auto-derived, not user-checked)
+        } else if (field.subgroup === null) {
           topLevelCounts[field.category]++;
         }
       }
     });
 
     if (has51) topLevelCounts['5.1']++;
-  }
+    if (has56) topLevelCounts['5.6']++;
+  });
 
-  return { totalSessions, topLevelCounts, detailedItems };
+  return { totalSessions: dedupKeys.length, totalUniquePatients, topLevelCounts, detailedItems, allItemCounts, scarsItems };
 }
 
 function getDCDataByMonth(yearMonth) {
@@ -551,6 +699,40 @@ function getDashboardData(yearMonth) {
     counseling: getCounselingSummaryByMonth(yearMonth),
     dc: getDCDataByMonth(yearMonth),
     pe: getPEDataLast6Months(),
-    months: getAvailableMonths()
+    months: getAvailableMonths(),
+    fieldConfig: COUNSELING_FIELDS.filter(f => f.type !== 'text')
+  };
+}
+
+// ==========================================
+// Report Summary Page Data
+// ==========================================
+function getReportSummaryData(yearMonth) {
+  const counseling = getCounselingSummaryByMonth(yearMonth);
+  const dc = getDCDataByMonth(yearMonth);
+  const tz = Session.getScriptTimeZone();
+
+  // DC total = SUM of discharge counts for the month
+  const dcTotal = dc.reduce(function(sum, d) { return sum + d.count; }, 0);
+
+  // PE total = SUM of error counts for the month (direct query, not last-6-months)
+  let peTotal = 0;
+  const peSheet = getSpreadsheet().getSheetByName(SHEET_PE);
+  if (peSheet && peSheet.getLastRow() > 1) {
+    const peData = peSheet.getDataRange().getValues();
+    for (let i = 1; i < peData.length; i++) {
+      if (!peData[i][1]) continue;
+      const ym = Utilities.formatDate(new Date(peData[i][1]), tz, 'yyyy-MM');
+      if (ym === yearMonth) peTotal += (peData[i][2] || 0);
+    }
+  }
+
+  const pePercentage = dcTotal > 0 ? (peTotal / dcTotal * 100) : 0;
+
+  return {
+    counseling: counseling,
+    dcTotal: dcTotal,
+    peTotal: peTotal,
+    pePercentage: pePercentage
   };
 }
