@@ -1,6 +1,6 @@
 <div class="page-header">
-  <h1><i class="fa-solid fa-clipboard-check"></i> Discharge Counseling</h1>
-  <p>บันทึกข้อมูลการให้คำแนะนำผู้ป่วยก่อนกลับบ้าน</p>
+  <h1><i class="fa-solid fa-clipboard-check"></i> Discharge Counseling Form</h1>
+  <p>แบบบันทึกข้อมูลการให้คำแนะนำผู้ป่วยก่อนกลับบ้าน</p>
 </div>
 
 <div class="card">
@@ -10,8 +10,8 @@
       <input type="date" id="counseling-date" class="form-input">
     </div>
     <div class="form-group">
-      <label class="required">AN (เลข 9 หลัก)</label>
-      <input type="text" id="counseling-an" class="form-input" maxlength="9" inputmode="numeric" placeholder="เช่น 000123456">
+      <label class="required">AN</label>
+      <input type="text" id="counseling-an" class="form-input" maxlength="9" inputmode="numeric" placeholder="เช่น 690123456">
       <div id="an-error" class="error-message">กรุณากรอก AN ให้ครบ 9 หลัก (ตัวเลขเท่านั้น)</div>
     </div>
   </div>
@@ -20,7 +20,7 @@
 <!-- 5.1 แนะนำการใช้ยาเทคนิคพิเศษ -->
 <div class="checkbox-section">
   <div class="section-header" onclick="toggleSection('section-5-1')">
-    <span class="section-title">5.1 แนะนำการใช้ยาเทคนิคพิเศษ</span>
+    <span class="section-title">1. แนะนำการใช้ยาเทคนิคพิเศษ</span>
     <i class="fa-solid fa-chevron-down chevron"></i>
   </div>
   <div id="section-5-1" class="section-body">
@@ -40,16 +40,16 @@
       <label for="cb-3">Budesonide MDI</label>
     </div>
     <div class="checkbox-item">
-      <input type="checkbox" data-key="Cat_5_1_InhalerOral_Seretide_Accuhaler" id="cb-4">
-      <label for="cb-4">Seretide Accuhaler</label>
+      <input type="checkbox" data-key="Cat_5_1_InhalerOral_Seretide_Evohaler" id="cb-4">
+      <label for="cb-4">Seretide Evohaler</label>
     </div>
     <div class="checkbox-item">
       <input type="checkbox" data-key="Cat_5_1_InhalerOral_Symbicort_Turbuhaler" id="cb-5">
       <label for="cb-5">Symbicort Turbuhaler</label>
     </div>
     <div class="checkbox-item">
-      <input type="checkbox" data-key="Cat_5_1_InhalerOral_Seretide_Evohaler" id="cb-6">
-      <label for="cb-6">Seretide Evohaler</label>
+      <input type="checkbox" data-key="Cat_5_1_InhalerOral_Seretide_Accuhaler" id="cb-6">
+      <label for="cb-6">Seretide Accuhaler</label>
     </div>
     <div class="checkbox-item">
       <input type="checkbox" data-key="Cat_5_1_InhalerOral_Spiriva_Handihaler" id="cb-7">
@@ -166,27 +166,27 @@
 <!-- 5.2 - 5.6 Standalone checkboxes -->
 <div class="standalone-checkbox" onclick="toggleStandaloneCheckbox(this)">
   <input type="checkbox" data-key="Cat_5_2_Warfarin" id="cb-32">
-  <label for="cb-32">5.2 แนะนำการใช้ยา Warfarin</label>
+  <label for="cb-32">2. แนะนำการใช้ยา Warfarin</label>
 </div>
 
 <div class="standalone-checkbox" onclick="toggleStandaloneCheckbox(this)">
-  <input type="checkbox" data-key="Cat_5_3_Chronic_TB_ARV" id="cb-33">
-  <label for="cb-33">5.3 แนะนำการใช้ยาผู้ป่วยโรคเรื้อรัง (TB/ARV)</label>
+  <input type="checkbox" data-key="Cat_5_3_TB" id="cb-33">
+  <label for="cb-33">3. แนะนำการใช้ยาในผู้ป่วย Tuberculosis รายใหม่</label>
 </div>
 
 <div class="standalone-checkbox" onclick="toggleStandaloneCheckbox(this)">
   <input type="checkbox" data-key="Cat_5_4_Myanmar_Label" id="cb-34">
-  <label for="cb-34">5.4 ผู้ป่วยพม่า ออกฉลากภาษาพม่า</label>
+  <label for="cb-34">4. ผู้ป่วยพม่า ออกฉลากภาษาพม่า</label>
 </div>
 
 <div class="standalone-checkbox" onclick="toggleStandaloneCheckbox(this)">
   <input type="checkbox" data-key="Cat_5_5_Stroke_Case" id="cb-35">
-  <label for="cb-35">5.5 แนะนำ ผู้ป่วย Stroke case</label>
+  <label for="cb-35">5. แนะนำ ผู้ป่วย Stroke Case</label>
 </div>
 
 <div class="standalone-checkbox" onclick="toggleStandaloneCheckbox(this)">
   <input type="checkbox" data-key="Cat_5_6_SJS_TEN_Risk" id="cb-36">
-  <label for="cb-36">5.6 แนะนำ ผู้ป่วยที่ได้รับยาที่เสี่ยงต่อการเกิด SJS/TEN</label>
+  <label for="cb-36">6. แนะนำ ผู้ป่วยที่ได้รับยาที่เสี่ยงต่อการเกิด SCARs</label>
 </div>
 
 <div class="btn-group">
