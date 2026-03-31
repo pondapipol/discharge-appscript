@@ -1,0 +1,199 @@
+<div class="page-header">
+  <h1><i class="fa-solid fa-clipboard-check"></i> Discharge Counseling</h1>
+  <p>บันทึกข้อมูลการให้คำแนะนำผู้ป่วยก่อนกลับบ้าน</p>
+</div>
+
+<div class="card">
+  <div class="form-row">
+    <div class="form-group">
+      <label class="required">วันที่ทำ Discharge Counseling</label>
+      <input type="date" id="counseling-date" class="form-input">
+    </div>
+    <div class="form-group">
+      <label class="required">AN (เลข 9 หลัก)</label>
+      <input type="text" id="counseling-an" class="form-input" maxlength="9" inputmode="numeric" placeholder="เช่น 000123456">
+      <div id="an-error" class="error-message">กรุณากรอก AN ให้ครบ 9 หลัก (ตัวเลขเท่านั้น)</div>
+    </div>
+  </div>
+</div>
+
+<!-- 5.1 แนะนำการใช้ยาเทคนิคพิเศษ -->
+<div class="checkbox-section">
+  <div class="section-header" onclick="toggleSection('section-5-1')">
+    <span class="section-title">5.1 แนะนำการใช้ยาเทคนิคพิเศษ</span>
+    <i class="fa-solid fa-chevron-down chevron"></i>
+  </div>
+  <div id="section-5-1" class="section-body">
+
+    <!-- ยาสูดพ่นทางปาก -->
+    <div class="subgroup-header">ยาสูดพ่นทางปาก</div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_InhalerOral_Ventolin_MDI" id="cb-1">
+      <label for="cb-1">Ventolin MDI</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_InhalerOral_Berodual_MDI" id="cb-2">
+      <label for="cb-2">Berodual MDI</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_InhalerOral_Budesonide_MDI" id="cb-3">
+      <label for="cb-3">Budesonide MDI</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_InhalerOral_Seretide_Accuhaler" id="cb-4">
+      <label for="cb-4">Seretide Accuhaler</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_InhalerOral_Symbicort_Turbuhaler" id="cb-5">
+      <label for="cb-5">Symbicort Turbuhaler</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_InhalerOral_Seretide_Evohaler" id="cb-6">
+      <label for="cb-6">Seretide Evohaler</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_InhalerOral_Spiriva_Handihaler" id="cb-7">
+      <label for="cb-7">Spiriva Handihaler</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_InhalerOral_Spiolto_Respimat" id="cb-8">
+      <label for="cb-8">Spiolto Respimat</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_InhalerOral_Spiriva_Respimat" id="cb-9">
+      <label for="cb-9">Spiriva Respimat</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_InhalerOral_Anoro_Elipta" id="cb-10">
+      <label for="cb-10">Anoro Elipta</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_InhalerOral_Trelegy_Ellipta" id="cb-11">
+      <label for="cb-11">Trelegy Ellipta</label>
+    </div>
+
+    <!-- ยาพ่นจมูก -->
+    <div class="subgroup-header">ยาพ่นจมูก</div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_NasalSpray_Rhinocort" id="cb-12">
+      <label for="cb-12">Rhinocort Nasal Spray</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_NasalSpray_Avamys" id="cb-13">
+      <label for="cb-13">Avamys Nasal Spray</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_NasalDrop" id="cb-14">
+      <label for="cb-14">ยาหยอดจมูก</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_NasalWash" id="cb-15">
+      <label for="cb-15">ล้างจมูก</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_Miacalcic_Nasal_Spray" id="cb-16">
+      <label for="cb-16">Miacalcic Nasal Spray</label>
+    </div>
+
+    <!-- ยาฉีดเบาหวาน -->
+    <div class="subgroup-header">ยาฉีดเบาหวาน</div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_DiabetesInj_Insulin_Syringe" id="cb-17">
+      <label for="cb-17">Insulin Syringe</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_DiabetesInj_Novomix_Penfilled" id="cb-18">
+      <label for="cb-18">Novomix Penfilled</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_DiabetesInj_Insulin_Glargine" id="cb-19">
+      <label for="cb-19">Insulin Glargine</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_DiabetesInj_Gensulin_Penfilled" id="cb-20">
+      <label for="cb-20">Gensulin Penfilled</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_DiabetesInj_Semaglutide" id="cb-21">
+      <label for="cb-21">Semaglutide</label>
+    </div>
+
+    <!-- ยาเทคนิคพิเศษอื่น ๆ -->
+    <div class="subgroup-header">ยาเทคนิคพิเศษอื่น ๆ</div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_SpecialOther_ChildLiquidMix" id="cb-22">
+      <label for="cb-22">การผสมยาน้ำเด็ก</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_SpecialOther_EyeDrop" id="cb-23">
+      <label for="cb-23">ยาหยอดตา</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_SpecialOther_EyeOintment" id="cb-24">
+      <label for="cb-24">ยาป้ายตา</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_SpecialOther_Sublingual" id="cb-25">
+      <label for="cb-25">ยาอมใต้ลิ้น</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_SpecialOther_RectalSupp" id="cb-26">
+      <label for="cb-26">ยาเหน็บทวาร/สวนทวาร</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_SpecialOther_VaginalSupp" id="cb-27">
+      <label for="cb-27">ยาเหน็บช่องคลอด</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_SpecialOther_EarDrop" id="cb-28">
+      <label for="cb-28">ยาหยอดหู</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_SpecialOther_Enoxaparin" id="cb-29">
+      <label for="cb-29">Enoxaparin</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_SpecialOther_Fentanyl_Patch" id="cb-30">
+      <label for="cb-30">Fentanyl patch</label>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" data-key="Cat_5_1_SpecialOther_Alendronate" id="cb-31">
+      <label for="cb-31">Alendronate</label>
+    </div>
+  </div>
+</div>
+
+<!-- 5.2 - 5.6 Standalone checkboxes -->
+<div class="standalone-checkbox" onclick="toggleStandaloneCheckbox(this)">
+  <input type="checkbox" data-key="Cat_5_2_Warfarin" id="cb-32">
+  <label for="cb-32">5.2 แนะนำการใช้ยา Warfarin</label>
+</div>
+
+<div class="standalone-checkbox" onclick="toggleStandaloneCheckbox(this)">
+  <input type="checkbox" data-key="Cat_5_3_Chronic_TB_ARV" id="cb-33">
+  <label for="cb-33">5.3 แนะนำการใช้ยาผู้ป่วยโรคเรื้อรัง (TB/ARV)</label>
+</div>
+
+<div class="standalone-checkbox" onclick="toggleStandaloneCheckbox(this)">
+  <input type="checkbox" data-key="Cat_5_4_Myanmar_Label" id="cb-34">
+  <label for="cb-34">5.4 ผู้ป่วยพม่า ออกฉลากภาษาพม่า</label>
+</div>
+
+<div class="standalone-checkbox" onclick="toggleStandaloneCheckbox(this)">
+  <input type="checkbox" data-key="Cat_5_5_Stroke_Case" id="cb-35">
+  <label for="cb-35">5.5 แนะนำ ผู้ป่วย Stroke case</label>
+</div>
+
+<div class="standalone-checkbox" onclick="toggleStandaloneCheckbox(this)">
+  <input type="checkbox" data-key="Cat_5_6_SJS_TEN_Risk" id="cb-36">
+  <label for="cb-36">5.6 แนะนำ ผู้ป่วยที่ได้รับยาที่เสี่ยงต่อการเกิด SJS/TEN</label>
+</div>
+
+<div class="btn-group">
+  <button class="btn btn-primary" onclick="submitCounselingForm()">
+    <i class="fa-solid fa-paper-plane"></i> บันทึกข้อมูล
+  </button>
+  <button class="btn btn-secondary" onclick="resetCounselingForm()">
+    <i class="fa-solid fa-rotate-left"></i> ล้างข้อมูล
+  </button>
+</div>

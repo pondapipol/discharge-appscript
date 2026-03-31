@@ -1,0 +1,644 @@
+<script>
+// ==========================================
+// Global State
+// ==========================================
+const chartInstances = {};
+const THAI_MONTHS = [
+  'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+  'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+];
+
+const TOP_LEVEL_LABELS = {
+  '5.1': '5.1 แนะนำการใช้ยาเทคนิคพิเศษ',
+  '5.2': '5.2 แนะนำการใช้ยา Warfarin',
+  '5.3': '5.3 แนะนำการใช้ยาผู้ป่วยโรคเรื้อรัง (TB/ARV)',
+  '5.4': '5.4 ผู้ป่วยพม่า ออกฉลากภาษาพม่า',
+  '5.5': '5.5 แนะนำ ผู้ป่วย Stroke case',
+  '5.6': '5.6 แนะนำ ผู้ป่วยที่ได้รับยาเสี่ยง SJS/TEN'
+};
+
+const COLORS = {
+  honey: '#FEB737',
+  periwinkle: '#A7B5FE',
+  seaBreeze: '#7BB8C0',
+  honeyLight: 'rgba(254, 183, 55, 0.2)',
+  periwinkleLight: 'rgba(167, 181, 254, 0.2)',
+  seaBreezeLight: 'rgba(123, 184, 192, 0.2)'
+};
+
+// ==========================================
+// Initialization
+// ==========================================
+document.addEventListener('DOMContentLoaded', function() {
+  initForms();
+  loadDashboard();
+});
+
+function initForms() {
+  const today = new Date().toISOString().split('T')[0];
+  const dateFields = ['counseling-date', 'dc-date', 'pe-date'];
+  dateFields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = today;
+  });
+
+  // AN input: only allow digits
+  const anInput = document.getElementById('counseling-an');
+  if (anInput) {
+    anInput.addEventListener('input', function() {
+      this.value = this.value.replace(/\D/g, '');
+      if (this.classList.contains('error')) {
+        validateAN();
+      }
+    });
+  }
+}
+
+// ==========================================
+// Page Navigation
+// ==========================================
+function switchPage(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+  document.getElementById('page-' + pageId).classList.add('active');
+  document.querySelector('.nav-item[data-page="' + pageId + '"]').classList.add('active');
+
+  if (pageId === 'dashboard') {
+    loadDashboard();
+  }
+}
+
+// ==========================================
+// Checkbox Section Toggle
+// ==========================================
+function toggleSection(sectionId) {
+  const body = document.getElementById(sectionId);
+  const header = body.previousElementSibling;
+
+  body.classList.toggle('collapsed');
+  header.classList.toggle('collapsed');
+}
+
+function toggleStandaloneCheckbox(container) {
+  const cb = container.querySelector('input[type="checkbox"]');
+  // Only toggle if the click was not directly on the checkbox or label
+  if (event.target !== cb && event.target.tagName !== 'LABEL') {
+    cb.checked = !cb.checked;
+  }
+}
+
+// ==========================================
+// AN Validation
+// ==========================================
+function validateAN() {
+  const input = document.getElementById('counseling-an');
+  const error = document.getElementById('an-error');
+  const value = input.value.trim();
+
+  if (!value || !/^\d{9}$/.test(value)) {
+    input.classList.add('error');
+    error.classList.add('visible');
+    return false;
+  }
+
+  input.classList.remove('error');
+  error.classList.remove('visible');
+  return true;
+}
+
+// ==========================================
+// Counseling Form Submit
+// ==========================================
+function submitCounselingForm() {
+  const date = document.getElementById('counseling-date').value;
+  if (!date) {
+    showToast('กรุณาเลือกวันที่', 'error');
+    return;
+  }
+
+  if (!validateAN()) {
+    showToast('กรุณากรอก AN ให้ครบ 9 หลัก', 'error');
+    return;
+  }
+
+  const checkboxes = {};
+  let anyChecked = false;
+  document.querySelectorAll('#page-counseling input[type="checkbox"][data-key]').forEach(cb => {
+    checkboxes[cb.dataset.key] = cb.checked;
+    if (cb.checked) anyChecked = true;
+  });
+
+  if (!anyChecked) {
+    showToast('กรุณาเลือกอย่างน้อย 1 รายการ', 'error');
+    return;
+  }
+
+  const formData = {
+    counselingDate: date,
+    an: document.getElementById('counseling-an').value.trim(),
+    checkboxes: checkboxes
+  };
+
+  showLoading();
+  google.script.run
+    .withSuccessHandler(function(result) {
+      hideLoading();
+      if (result.success) {
+        showToast(result.message, 'success');
+        resetCounselingForm();
+      } else {
+        showToast(result.error, 'error');
+      }
+    })
+    .withFailureHandler(function(err) {
+      hideLoading();
+      showToast('เกิดข้อผิดพลาด: ' + err.message, 'error');
+    })
+    .submitCounselingData(formData);
+}
+
+function resetCounselingForm() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('counseling-date').value = today;
+  document.getElementById('counseling-an').value = '';
+  document.getElementById('counseling-an').classList.remove('error');
+  document.getElementById('an-error').classList.remove('visible');
+  document.querySelectorAll('#page-counseling input[type="checkbox"]').forEach(cb => {
+    cb.checked = false;
+  });
+}
+
+// ==========================================
+// DC Form Submit
+// ==========================================
+function submitDCForm() {
+  const date = document.getElementById('dc-date').value;
+  const countStr = document.getElementById('dc-count').value;
+  const error = document.getElementById('dc-error');
+
+  if (!date) {
+    showToast('กรุณาเลือกวันที่', 'error');
+    return;
+  }
+
+  const count = parseInt(countStr, 10);
+  if (isNaN(count) || count < 0) {
+    document.getElementById('dc-count').classList.add('error');
+    error.classList.add('visible');
+    showToast('กรุณากรอกจำนวนที่ถูกต้อง', 'error');
+    return;
+  }
+
+  document.getElementById('dc-count').classList.remove('error');
+  error.classList.remove('visible');
+
+  showLoading();
+  google.script.run
+    .withSuccessHandler(function(result) {
+      hideLoading();
+      if (result.success) {
+        showToast(result.message, 'success');
+        resetDCForm();
+      } else {
+        showToast(result.error, 'error');
+      }
+    })
+    .withFailureHandler(function(err) {
+      hideLoading();
+      showToast('เกิดข้อผิดพลาด: ' + err.message, 'error');
+    })
+    .submitDCData({ dischargeDate: date, dischargeCount: countStr });
+}
+
+function resetDCForm() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('dc-date').value = today;
+  document.getElementById('dc-count').value = '';
+  document.getElementById('dc-count').classList.remove('error');
+  document.getElementById('dc-error').classList.remove('visible');
+}
+
+// ==========================================
+// PE Form Submit
+// ==========================================
+function submitPEForm() {
+  const date = document.getElementById('pe-date').value;
+  const countStr = document.getElementById('pe-count').value;
+  const error = document.getElementById('pe-error');
+
+  if (!date) {
+    showToast('กรุณาเลือกวันที่', 'error');
+    return;
+  }
+
+  const count = parseInt(countStr, 10);
+  if (isNaN(count) || count < 0) {
+    document.getElementById('pe-count').classList.add('error');
+    error.classList.add('visible');
+    showToast('กรุณากรอกจำนวนที่ถูกต้อง', 'error');
+    return;
+  }
+
+  document.getElementById('pe-count').classList.remove('error');
+  error.classList.remove('visible');
+
+  showLoading();
+  google.script.run
+    .withSuccessHandler(function(result) {
+      hideLoading();
+      if (result.success) {
+        showToast(result.message, 'success');
+        resetPEForm();
+      } else {
+        showToast(result.error, 'error');
+      }
+    })
+    .withFailureHandler(function(err) {
+      hideLoading();
+      showToast('เกิดข้อผิดพลาด: ' + err.message, 'error');
+    })
+    .submitPEData({ errorDate: date, errorCount: countStr });
+}
+
+function resetPEForm() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('pe-date').value = today;
+  document.getElementById('pe-count').value = '';
+  document.getElementById('pe-count').classList.remove('error');
+  document.getElementById('pe-error').classList.remove('visible');
+}
+
+// ==========================================
+// Dashboard
+// ==========================================
+function loadDashboard() {
+  // First load available months
+  google.script.run
+    .withSuccessHandler(function(months) {
+      const select = document.getElementById('dashboard-month');
+      const currentVal = select.value;
+      select.innerHTML = '<option value="">-- กรุณาเลือกเดือน --</option>';
+
+      if (!months || months.length === 0) {
+        document.getElementById('dashboard-empty').style.display = 'block';
+        return;
+      }
+
+      document.getElementById('dashboard-empty').style.display = 'none';
+
+      months.forEach(function(ym) {
+        const opt = document.createElement('option');
+        opt.value = ym;
+        opt.textContent = formatThaiMonth(ym);
+        select.appendChild(opt);
+      });
+
+      // Restore or select first month
+      if (currentVal && months.indexOf(currentVal) >= 0) {
+        select.value = currentVal;
+      } else {
+        select.value = months[0];
+      }
+
+      onMonthChange();
+    })
+    .withFailureHandler(function(err) {
+      console.error('Failed to load months:', err);
+    })
+    .getAvailableMonths();
+}
+
+function onMonthChange() {
+  const yearMonth = document.getElementById('dashboard-month').value;
+  if (!yearMonth) return;
+
+  showLoading();
+
+  google.script.run
+    .withSuccessHandler(function(data) {
+      hideLoading();
+      renderDashboard(data, yearMonth);
+    })
+    .withFailureHandler(function(err) {
+      hideLoading();
+      showToast('โหลดข้อมูลไม่สำเร็จ: ' + err.message, 'error');
+    })
+    .getDashboardData(yearMonth);
+}
+
+function renderDashboard(data, yearMonth) {
+  // Stat cards
+  const counseling = data.counseling;
+  const dcTotal = data.dc.reduce(function(sum, d) { return sum + d.count; }, 0);
+  const peMonth = data.pe.find(function(p) { return p.month === yearMonth; });
+  const peTotal = peMonth ? peMonth.totalErrors : 0;
+
+  document.getElementById('stat-counseling').textContent = counseling.totalSessions;
+  document.getElementById('stat-discharge').textContent = dcTotal;
+  document.getElementById('stat-pe').textContent = peTotal;
+
+  // Summary table
+  renderSummaryTable(counseling);
+
+  // Charts
+  renderTopCategoriesChart(counseling.topLevelCounts);
+  renderDetailedDrugsChart(counseling.detailedItems);
+  renderDailyDCChart(data.dc);
+  renderPEMonthlyChart(data.pe);
+}
+
+function renderSummaryTable(counseling) {
+  const tbody = document.getElementById('summary-table-body');
+  const categories = ['5.1', '5.2', '5.3', '5.4', '5.5', '5.6'];
+  let total = 0;
+  let html = '';
+
+  categories.forEach(function(cat) {
+    const count = counseling.topLevelCounts[cat] || 0;
+    total += count;
+    html += '<tr><td>' + TOP_LEVEL_LABELS[cat] + '</td><td>' + count + '</td></tr>';
+  });
+
+  tbody.innerHTML = html;
+  document.getElementById('summary-total').textContent = total;
+}
+
+// ==========================================
+// Chart Rendering
+// ==========================================
+function destroyChart(id) {
+  if (chartInstances[id]) {
+    chartInstances[id].destroy();
+    delete chartInstances[id];
+  }
+}
+
+function renderTopCategoriesChart(topLevelCounts) {
+  destroyChart('chart-top-categories');
+  const ctx = document.getElementById('chart-top-categories').getContext('2d');
+
+  const labels = Object.keys(TOP_LEVEL_LABELS).map(function(k) { return TOP_LEVEL_LABELS[k]; });
+  const values = Object.keys(TOP_LEVEL_LABELS).map(function(k) { return topLevelCounts[k] || 0; });
+  const bgColors = [
+    COLORS.honey, COLORS.periwinkle, COLORS.seaBreeze,
+    COLORS.honey, COLORS.periwinkle, COLORS.seaBreeze
+  ];
+
+  chartInstances['chart-top-categories'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'จำนวน (ครั้ง)',
+        data: values,
+        backgroundColor: bgColors,
+        borderColor: bgColors,
+        borderWidth: 1,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) { return ctx.parsed.x + ' ครั้ง'; }
+          }
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: {
+            stepSize: 1,
+            font: { family: 'Athiti' }
+          },
+          grid: { color: 'rgba(0,0,0,0.05)' }
+        },
+        y: {
+          ticks: {
+            font: { family: 'Athiti', size: 12 },
+            autoSkip: false
+          },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+function renderDetailedDrugsChart(detailedItems) {
+  destroyChart('chart-detailed-drugs');
+  const ctx = document.getElementById('chart-detailed-drugs').getContext('2d');
+
+  // Sort by count descending, filter out zero
+  const entries = Object.entries(detailedItems)
+    .filter(function(e) { return e[1] > 0; })
+    .sort(function(a, b) { return b[1] - a[1]; });
+
+  // If no data, show all items with 0
+  const labels = entries.length > 0
+    ? entries.map(function(e) { return e[0]; })
+    : Object.keys(detailedItems);
+  const values = entries.length > 0
+    ? entries.map(function(e) { return e[1]; })
+    : Object.values(detailedItems);
+
+  const bgColors = labels.map(function(_, i) {
+    const palette = [COLORS.seaBreeze, COLORS.periwinkle, COLORS.honey];
+    return palette[i % 3];
+  });
+
+  chartInstances['chart-detailed-drugs'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'จำนวน (ครั้ง)',
+        data: values,
+        backgroundColor: bgColors,
+        borderColor: bgColors,
+        borderWidth: 1,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) { return ctx.parsed.x + ' ครั้ง'; }
+          }
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: {
+            stepSize: 1,
+            font: { family: 'Athiti' }
+          },
+          grid: { color: 'rgba(0,0,0,0.05)' }
+        },
+        y: {
+          ticks: {
+            font: { family: 'Athiti', size: 11 },
+            autoSkip: false
+          },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+function renderDailyDCChart(dcData) {
+  destroyChart('chart-daily-dc');
+  const ctx = document.getElementById('chart-daily-dc').getContext('2d');
+
+  const labels = dcData.map(function(d) { return 'วันที่ ' + d.day; });
+  const values = dcData.map(function(d) { return d.count; });
+
+  chartInstances['chart-daily-dc'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'จำนวน Discharge (ราย)',
+        data: values,
+        backgroundColor: COLORS.periwinkle,
+        borderColor: COLORS.periwinkle,
+        borderWidth: 1,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) { return ctx.parsed.x + ' ราย'; }
+          }
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: {
+            stepSize: 1,
+            font: { family: 'Athiti' }
+          },
+          grid: { color: 'rgba(0,0,0,0.05)' }
+        },
+        y: {
+          ticks: {
+            font: { family: 'Athiti', size: 12 },
+            autoSkip: false
+          },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+function renderPEMonthlyChart(peData) {
+  destroyChart('chart-pe-monthly');
+  const ctx = document.getElementById('chart-pe-monthly').getContext('2d');
+
+  const labels = peData.map(function(d) { return formatThaiMonth(d.month); });
+  const values = peData.map(function(d) { return d.totalErrors; });
+
+  chartInstances['chart-pe-monthly'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Prescribing Error (ครั้ง)',
+        data: values,
+        backgroundColor: COLORS.honey,
+        borderColor: COLORS.honey,
+        borderWidth: 1,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) { return ctx.parsed.x + ' ครั้ง'; }
+          }
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: {
+            stepSize: 1,
+            font: { family: 'Athiti' }
+          },
+          grid: { color: 'rgba(0,0,0,0.05)' }
+        },
+        y: {
+          ticks: {
+            font: { family: 'Athiti', size: 12 }
+          },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+// ==========================================
+// Utilities
+// ==========================================
+function formatThaiMonth(yearMonth) {
+  if (!yearMonth) return '';
+  const parts = yearMonth.split('-');
+  const year = parseInt(parts[0], 10) + 543; // Buddhist Era
+  const monthIdx = parseInt(parts[1], 10) - 1;
+  return THAI_MONTHS[monthIdx] + ' ' + year;
+}
+
+function showLoading() {
+  document.getElementById('loading-overlay').classList.remove('hidden');
+}
+
+function hideLoading() {
+  document.getElementById('loading-overlay').classList.add('hidden');
+}
+
+function showToast(message, type) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = 'toast ' + (type || 'info');
+
+  const icon = type === 'success' ? 'fa-check-circle' :
+               type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
+
+  toast.innerHTML = '<i class="fa-solid ' + icon + '"></i> ' + message;
+  container.appendChild(toast);
+
+  setTimeout(function() {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(100%)';
+    toast.style.transition = 'all 0.3s ease';
+    setTimeout(function() { toast.remove(); }, 300);
+  }, 3000);
+}
+</script>

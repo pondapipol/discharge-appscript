@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://fonts.googleapis.com/css2?family=Athiti:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <?!= include('Stylesheet') ?>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="nav-brand">
+      <i class="fa-solid fa-hospital"></i>
+      <span class="nav-brand-text">DC Tracker</span>
+    </div>
+    <div class="nav-links">
+      <a class="nav-item active" data-page="dashboard" onclick="switchPage('dashboard')">
+        <i class="fa-solid fa-chart-line"></i>
+        <span>Dashboard</span>
+      </a>
+      <a class="nav-item" data-page="counseling" onclick="switchPage('counseling')">
+        <i class="fa-solid fa-clipboard-check"></i>
+        <span>Counseling</span>
+      </a>
+      <a class="nav-item" data-page="dc" onclick="switchPage('dc')">
+        <i class="fa-solid fa-bed"></i>
+        <span>DC</span>
+      </a>
+      <a class="nav-item" data-page="pe" onclick="switchPage('pe')">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>PE</span>
+      </a>
+    </div>
+  </nav>
+
+  <!-- Page Containers -->
+  <main class="main-content">
+    <div id="page-dashboard" class="page active">
+      <?!= include('Page_Dashboard') ?>
+    </div>
+    <div id="page-counseling" class="page">
+      <?!= include('Page_Counseling') ?>
+    </div>
+    <div id="page-dc" class="page">
+      <?!= include('Page_DC') ?>
+    </div>
+    <div id="page-pe" class="page">
+      <?!= include('Page_PE') ?>
+    </div>
+  </main>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="loading-overlay hidden">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <?!= include('JavaScript') ?>
+</body>
+</html>

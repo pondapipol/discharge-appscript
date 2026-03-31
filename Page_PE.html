@@ -1,0 +1,27 @@
+<div class="page-header">
+  <h1><i class="fa-solid fa-triangle-exclamation"></i> Prescribing Error</h1>
+  <p>บันทึกจำนวน Prescribing Error ในแต่ละวัน</p>
+</div>
+
+<div class="card">
+  <div class="form-row">
+    <div class="form-group">
+      <label class="required">วัน/เดือน/ปีที่เกิด Error</label>
+      <input type="date" id="pe-date" class="form-input">
+    </div>
+    <div class="form-group">
+      <label class="required">จำนวน Error ต่อวัน</label>
+      <input type="number" id="pe-count" class="form-input" min="0" step="1" inputmode="numeric" placeholder="จำนวน Error">
+      <div id="pe-error" class="error-message">กรุณากรอกจำนวนที่ถูกต้อง</div>
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <button class="btn btn-primary" onclick="submitPEForm()">
+      <i class="fa-solid fa-paper-plane"></i> บันทึกข้อมูล
+    </button>
+    <button class="btn btn-secondary" onclick="resetPEForm()">
+      <i class="fa-solid fa-rotate-left"></i> ล้างข้อมูล
+    </button>
+  </div>
+</div>

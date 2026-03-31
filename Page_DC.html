@@ -1,0 +1,27 @@
+<div class="page-header">
+  <h1><i class="fa-solid fa-bed"></i> Discharge Count</h1>
+  <p>บันทึกจำนวนผู้ป่วยที่ Discharge ในแต่ละวัน</p>
+</div>
+
+<div class="card">
+  <div class="form-row">
+    <div class="form-group">
+      <label class="required">วัน/เดือน/ปีที่ Discharge</label>
+      <input type="date" id="dc-date" class="form-input">
+    </div>
+    <div class="form-group">
+      <label class="required">จำนวนผู้ป่วยที่ Discharge</label>
+      <input type="number" id="dc-count" class="form-input" min="0" step="1" inputmode="numeric" placeholder="จำนวนผู้ป่วย">
+      <div id="dc-error" class="error-message">กรุณากรอกจำนวนที่ถูกต้อง</div>
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <button class="btn btn-primary" onclick="submitDCForm()">
+      <i class="fa-solid fa-paper-plane"></i> บันทึกข้อมูล
+    </button>
+    <button class="btn btn-secondary" onclick="resetDCForm()">
+      <i class="fa-solid fa-rotate-left"></i> ล้างข้อมูล
+    </button>
+  </div>
+</div>

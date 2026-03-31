@@ -1,0 +1,108 @@
+<div class="page-header">
+  <h1><i class="fa-solid fa-chart-line"></i> Dashboard</h1>
+  <p>ภาพรวมข้อมูลการให้คำแนะนำและ Discharge</p>
+</div>
+
+<!-- Month Selector -->
+<div class="month-selector">
+  <label><i class="fa-solid fa-calendar"></i> เลือกเดือน:</label>
+  <select id="dashboard-month" onchange="onMonthChange()">
+    <option value="">-- กรุณาเลือกเดือน --</option>
+  </select>
+</div>
+
+<!-- Stat Cards -->
+<div class="stat-cards">
+  <div class="stat-card">
+    <div class="stat-value" id="stat-counseling">-</div>
+    <div class="stat-label">Counseling ทั้งหมด (ครั้ง)</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" id="stat-discharge">-</div>
+    <div class="stat-label">Discharge ทั้งหมด (ราย)</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" id="stat-pe">-</div>
+    <div class="stat-label">Prescribing Error (ครั้ง)</div>
+  </div>
+</div>
+
+<!-- Summary Table -->
+<div class="card full-width" style="margin-bottom: 20px;">
+  <div class="card-header">
+    <i class="fa-solid fa-table" style="color: var(--periwinkle);"></i>
+    สรุปข้อมูลรายเดือน
+  </div>
+  <div style="overflow-x: auto;">
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>หัวข้อ</th>
+          <th>จำนวน (ครั้ง)</th>
+        </tr>
+      </thead>
+      <tbody id="summary-table-body">
+        <tr><td colspan="2" style="text-align:center; color: var(--text-light);">กรุณาเลือกเดือน</td></tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td>รวมทั้งหมด</td>
+          <td id="summary-total">-</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<!-- Charts Grid -->
+<div class="dashboard-grid">
+  <!-- Chart 1: Top-level categories -->
+  <div class="card">
+    <div class="card-header">
+      <i class="fa-solid fa-chart-bar" style="color: var(--honey);"></i>
+      เปรียบเทียบหัวข้อหลัก (5.1 - 5.6)
+    </div>
+    <div class="chart-container">
+      <canvas id="chart-top-categories"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 2: Detailed drugs under 5.1 -->
+  <div class="card">
+    <div class="card-header">
+      <i class="fa-solid fa-pills" style="color: var(--sea-breeze);"></i>
+      รายละเอียดยาภายใต้ 5.1
+    </div>
+    <div class="chart-container" style="min-height: 500px;">
+      <canvas id="chart-detailed-drugs"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 3: Daily DC -->
+  <div class="card">
+    <div class="card-header">
+      <i class="fa-solid fa-bed" style="color: var(--periwinkle);"></i>
+      จำนวน Discharge รายวัน
+    </div>
+    <div class="chart-container">
+      <canvas id="chart-daily-dc"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 4: PE Monthly -->
+  <div class="card">
+    <div class="card-header">
+      <i class="fa-solid fa-triangle-exclamation" style="color: var(--honey);"></i>
+      Prescribing Error ย้อนหลัง 6 เดือน
+    </div>
+    <div class="chart-container">
+      <canvas id="chart-pe-monthly"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Empty state when no data -->
+<div id="dashboard-empty" class="empty-state" style="display: none;">
+  <i class="fa-solid fa-chart-pie"></i>
+  <p>ยังไม่มีข้อมูล กรุณาบันทึกข้อมูลจากหน้า Counseling, DC หรือ PE ก่อน</p>
+</div>
