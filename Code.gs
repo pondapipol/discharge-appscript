@@ -4,7 +4,7 @@
 const SHEET_COUNSELING = 'Counseling_Raw';
 const SHEET_DC = 'DC_Raw';
 const SHEET_PE = 'PE_Raw';
-const SHEET_REPORT = 'Report Summary';
+const SHEET_REPORT = 'Report Summary [new generated]';
 
 // Column mapping for counseling checkboxes (0-indexed from column D)
 const COUNSELING_FIELDS = [
@@ -62,6 +62,8 @@ const COUNSELING_FIELDS = [
   { key: 'Cat_5_7_ARV', label: '7. แนะนำการใช้ยาในผู้ป่วย ARV รายใหม่', category: '5.7', subgroup: null },
   { key: 'Cat_5_8_Other', label: '8. อื่น ๆ', category: '5.8', subgroup: null },
   { key: 'Cat_5_8_Other_Text', label: 'รายละเอียด อื่น ๆ', category: '5.8', subgroup: null, type: 'text' },
+  // Appended at end to preserve existing column positions
+  { key: 'Cat_5_1_SpecialOther_Omeprazole_NG', label: 'Omeprazole via NG Tube', category: '5.1', subgroup: 'ยาเทคนิคพิเศษอื่น ๆ' },
 ];
 
 // ==========================================
