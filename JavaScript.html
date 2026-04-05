@@ -436,6 +436,9 @@ function renderDashboard(data, yearMonth) {
   // SCARs table
   renderScarsTable(counseling.scarsItems);
 
+  // SCARs patient detail table
+  renderSCARsDetailTable(counseling.scarsPatientRows);
+
   // Charts
   renderTopCategoriesChart(counseling.topLevelCounts);
   renderDetailedDrugsChart();
@@ -493,6 +496,62 @@ function renderScarsTable(scarsItems) {
     html += '<tr><td>' + label + '</td><td>' + count + '</td></tr>';
   });
   tbody.innerHTML = html;
+}
+
+// ==========================================
+// SCARs Patient Detail Table + XLSX Download
+// ==========================================
+function renderSCARsDetailTable(rows) {
+  var tbody = document.getElementById('scars-detail-tbody');
+  var btn = document.getElementById('btn-download-scars');
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--text-light);">ไม่มีข้อมูลในเดือนนี้</td></tr>';
+    btn.disabled = true;
+    return;
+  }
+  var html = '';
+  rows.forEach(function(row) {
+    var displayDate = formatThaiDate(row.date);
+    var drugs = row.drugs.map(function(d) { return escapeHtml(d); }).join(', ');
+    html += '<tr><td>' + displayDate + '</td><td>' + escapeHtml(row.an) + '</td><td>' + drugs + '</td></tr>';
+  });
+  tbody.innerHTML = html;
+  btn.disabled = false;
+}
+
+function formatThaiDate(isoDate) {
+  if (!isoDate) return '';
+  var parts = isoDate.split('-');
+  var year = parseInt(parts[0], 10) + 543;
+  var month = parseInt(parts[1], 10) - 1;
+  var day = parseInt(parts[2], 10);
+  return day + ' ' + THAI_MONTHS[month] + ' ' + year;
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function downloadSCARsXLSX() {
+  if (typeof XLSX === 'undefined') {
+    showToast('ไม่สามารถโหลด SheetJS ได้ กรุณารีเฟรชหน้าเว็บ', 'error');
+    return;
+  }
+  if (!currentDashboardData || !currentDashboardData.counseling) return;
+  var rows = currentDashboardData.counseling.scarsPatientRows || [];
+  if (rows.length === 0) {
+    showToast('ไม่มีข้อมูลที่จะดาวน์โหลด', 'info');
+    return;
+  }
+  var wsData = [['วันที่', 'AN', 'ชื่อยา']];
+  rows.forEach(function(row) {
+    wsData.push([formatThaiDate(row.date), row.an, row.drugs.join(', ')]);
+  });
+  var ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [{ wch: 20 }, { wch: 14 }, { wch: 60 }];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'SCARs_' + (currentYearMonth || 'data'));
+  XLSX.writeFile(wb, 'SCARs_Patients_' + (currentYearMonth || 'data') + '.xlsx');
 }
 
 // ==========================================
@@ -799,6 +858,8 @@ function onReportMonthChange() {
     .withSuccessHandler(function(data) {
       hideLoading();
       renderReportTable(data);
+      var dlBtn = document.getElementById('btn-download-report');
+      if (dlBtn) dlBtn.disabled = false;
     })
     .withFailureHandler(function(err) {
       hideLoading();
@@ -850,6 +911,50 @@ function renderReportTable(data) {
 
   var pePctEl = document.getElementById('report-pe-pct');
   if (pePctEl) pePctEl.textContent = data.pePercentage.toFixed(2);
+}
+
+function downloadReportXLSX() {
+  if (typeof XLSX === 'undefined') {
+    showToast('ไม่สามารถโหลด SheetJS ได้ กรุณารีเฟรชหน้าเว็บ', 'error');
+    return;
+  }
+  var table = document.getElementById('report-table');
+  if (!table) return;
+
+  var yearMonth = document.getElementById('report-month').value || 'data';
+  var wsData = [];
+
+  // Header row
+  wsData.push(['รายละเอียด', 'Discharge Counseling (ครั้ง)', 'ผลลัพธ์']);
+
+  // Body rows
+  var rows = table.querySelectorAll('tbody tr');
+  rows.forEach(function(tr) {
+    var cells = tr.querySelectorAll('td');
+    if (cells.length >= 2) {
+      var detail = cells[0].textContent.trim();
+      var count = cells[1].textContent.trim();
+      var result = cells.length >= 3 ? cells[2].textContent.trim() : '';
+      wsData.push([detail, isNaN(count) ? count : Number(count), result]);
+    }
+  });
+
+  // Footer rows
+  var footRows = table.querySelectorAll('tfoot tr');
+  footRows.forEach(function(tr) {
+    var cells = tr.querySelectorAll('td');
+    if (cells.length >= 2) {
+      var detail = cells[0].textContent.trim();
+      var count = cells[1].textContent.trim();
+      wsData.push([detail, isNaN(count) ? count : Number(count), '']);
+    }
+  });
+
+  var ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [{ wch: 50 }, { wch: 25 }, { wch: 30 }];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Report_' + yearMonth);
+  XLSX.writeFile(wb, 'Report_Summary_' + yearMonth + '.xlsx');
 }
 
 // ==========================================

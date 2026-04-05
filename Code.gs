@@ -577,7 +577,7 @@ function getCounselingSummaryByMonth(yearMonth) {
   const ss = getSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_COUNSELING);
   if (!sheet || sheet.getLastRow() <= 1) {
-    return { totalSessions: 0, totalUniquePatients: 0, topLevelCounts: {}, detailedItems: {}, allItemCounts: {}, scarsItems: {} };
+    return { totalSessions: 0, totalUniquePatients: 0, topLevelCounts: {}, detailedItems: {}, allItemCounts: {}, scarsItems: {}, scarsPatientRows: [] };
   }
 
   const data = sheet.getDataRange().getValues();
@@ -606,6 +606,7 @@ function getCounselingSummaryByMonth(yearMonth) {
   const detailedItems = {};
   const allItemCounts = {};
   const scarsItems = {};
+  const scarsPatientRows = [];
 
   // Initialize
   COUNSELING_FIELDS.forEach(f => {
@@ -644,10 +645,24 @@ function getCounselingSummaryByMonth(yearMonth) {
     });
 
     if (has51) topLevelCounts['5.1']++;
-    if (has56) topLevelCounts['5.6']++;
+    if (has56) {
+      topLevelCounts['5.6']++;
+      const rawDate = data[i][1];
+      const dateStr = Utilities.formatDate(new Date(rawDate), tz, 'yyyy-MM-dd');
+      const an = String(data[i][2]);
+      const drugs = [];
+      COUNSELING_FIELDS.forEach(function(field, idx) {
+        if (field.category === '5.6' && field.subgroup && data[i][idx + 3] === true) {
+          drugs.push(field.label);
+        }
+      });
+      scarsPatientRows.push({ date: dateStr, an: an, drugs: drugs });
+    }
   });
 
-  return { totalSessions: dedupKeys.length, totalUniquePatients, topLevelCounts, detailedItems, allItemCounts, scarsItems };
+  scarsPatientRows.sort(function(a, b) { return a.date.localeCompare(b.date); });
+
+  return { totalSessions: dedupKeys.length, totalUniquePatients, topLevelCounts, detailedItems, allItemCounts, scarsItems, scarsPatientRows };
 }
 
 function getDCDataByMonth(yearMonth) {

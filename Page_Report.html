@@ -4,11 +4,16 @@
 </div>
 
 <!-- Month Selector -->
-<div class="month-selector">
+<div class="month-selector" style="display:flex; align-items:center; gap:12px;">
   <label><i class="fa-solid fa-calendar"></i> เลือกเดือน:</label>
   <select id="report-month" onchange="onReportMonthChange()">
     <option value="">-- กรุณาเลือกเดือน --</option>
   </select>
+  <button class="btn btn-secondary btn-sm" id="btn-download-report"
+          onclick="downloadReportXLSX()"
+          style="margin-left:auto;" disabled>
+    <i class="fa-solid fa-file-excel"></i> ดาวน์โหลด XLSX
+  </button>
 </div>
 
 <div class="card full-width">
