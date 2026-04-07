@@ -1,0 +1,204 @@
+<div class="page-header">
+  <h1><i class="fa-solid fa-clock"></i> Home Med - Paperless</h1>
+  <p>บันทึกเวลาขั้นตอนการจัดยากลับบ้าน</p>
+</div>
+
+<!-- Patient Info -->
+<div class="card">
+  <div class="card-header"><i class="fa-solid fa-user"></i> ข้อมูลผู้ป่วย</div>
+  <div class="form-row">
+    <div class="form-group">
+      <label class="required">วันที่ Discharge</label>
+      <input type="date" id="hm-date" class="form-input">
+    </div>
+    <div class="form-group">
+      <label class="required">AN (9 หลัก)</label>
+      <input type="text" id="hm-an" class="form-input" maxlength="9" inputmode="numeric" placeholder="000000000">
+      <div id="hm-an-error" class="error-message">กรุณากรอก AN ให้ครบ 9 หลัก</div>
+    </div>
+  </div>
+  <div class="form-row">
+    <div class="form-group">
+      <label class="required">จำนวนยา HM</label>
+      <input type="number" id="hm-drug-count" class="form-input" min="1" step="1" inputmode="numeric" placeholder="จำนวนรายการยา">
+      <div id="hm-drug-error" class="error-message">กรุณากรอกจำนวนยาที่ถูกต้อง</div>
+    </div>
+    <div class="form-group">
+      <label class="required">Ward</label>
+      <select id="hm-ward" class="form-input">
+        <option value="">— เลือก Ward —</option>
+        <option value="อายุรกรรมชาย">อายุรกรรมชาย</option>
+        <option value="อายุรกรรมหญิง">อายุรกรรมหญิง</option>
+        <option value="ศัลยกรรมชาย">ศัลยกรรมชาย</option>
+        <option value="ศัลยกรรมหญิง">ศัลยกรรมหญิง</option>
+        <option value="อภิบาลทารกป่วย (SNB)">อภิบาลทารกป่วย (SNB)</option>
+        <option value="พิเศษชัยพัฒนา ชั้น 7">พิเศษชัยพัฒนา ชั้น 7</option>
+        <option value="พิเศษชัยพัฒนา ชั้น 8">พิเศษชัยพัฒนา ชั้น 8</option>
+        <option value="กุมารเวชกรรม">กุมารเวชกรรม</option>
+        <option value="MICU">MICU</option>
+        <option value="SICU">SICU</option>
+        <option value="สูตินรีเวชกรรม">สูตินรีเวชกรรม</option>
+        <option value="NICU">NICU</option>
+        <option value="พิเศษ 5 ชั้น 4">พิเศษ 5 ชั้น 4</option>
+        <option value="ห้องคลอด">ห้องคลอด</option>
+      </select>
+      <div id="hm-ward-error" class="error-message">กรุณาเลือก Ward</div>
+    </div>
+  </div>
+</div>
+
+<!-- Timing Steps -->
+<div class="card">
+  <div class="card-header"><i class="fa-solid fa-list-ol"></i> ขั้นตอนการทำงาน</div>
+
+  <!-- Step 01 -->
+  <div class="hm-step">
+    <span class="hm-step-num">01</span>
+    <span class="hm-step-role">แพทย์</span>
+    <span class="hm-step-label">เวลาสั่ง</span>
+    <div class="hm-time-group">
+      <input class="time-input" id="hm-step01" maxlength="5" placeholder="HH:MM" inputmode="numeric">
+      <span class="time-suffix">น.</span>
+    </div>
+  </div>
+
+  <!-- Step 02 -->
+  <div class="hm-step">
+    <span class="hm-step-num">02</span>
+    <span class="hm-step-role">พยาบาล</span>
+    <span class="hm-step-label">เวลารับคำสั่ง</span>
+    <div class="hm-time-group">
+      <input class="time-input" id="hm-step02" maxlength="5" placeholder="HH:MM" inputmode="numeric">
+      <span class="time-suffix">น.</span>
+    </div>
+  </div>
+
+  <!-- Step 03 -->
+  <div class="hm-step">
+    <span class="hm-step-num">03</span>
+    <span class="hm-step-role">เภสัชกร - Screen</span>
+    <span class="hm-step-label">ตรวจสอบ HM</span>
+    <div class="hm-time-group">
+      <span class="time-lbl">เริ่ม</span>
+      <input class="time-input" id="hm-step03" maxlength="5" placeholder="HH:MM" inputmode="numeric">
+    </div>
+  </div>
+
+  <!-- Step 04 -->
+  <div class="hm-step">
+    <span class="hm-step-num">04</span>
+    <span class="hm-step-role">เภสัชกร - Screen</span>
+    <span class="hm-step-label">Consult แพทย์</span>
+    <div class="hm-time-group">
+      <span class="time-lbl">เริ่ม</span>
+      <input class="time-input" id="hm-step04-start" maxlength="5" placeholder="HH:MM" inputmode="numeric">
+      <span class="time-lbl" style="margin-left:6px;">เสร็จ</span>
+      <input class="time-input" id="hm-step04-end" maxlength="5" placeholder="HH:MM" inputmode="numeric">
+    </div>
+  </div>
+
+  <!-- Step 05 -->
+  <div class="hm-step">
+    <span class="hm-step-num">05</span>
+    <span class="hm-step-role">เภสัชกร - Screen</span>
+    <span class="hm-step-label">แก้ไข + รับคำสั่ง</span>
+    <div class="hm-time-group">
+      <span class="time-lbl">เริ่ม</span>
+      <input class="time-input" id="hm-step05-start" maxlength="5" placeholder="HH:MM" inputmode="numeric">
+      <span class="time-lbl" style="margin-left:6px;">เสร็จ</span>
+      <input class="time-input" id="hm-step05-end" maxlength="5" placeholder="HH:MM" inputmode="numeric">
+    </div>
+  </div>
+
+  <!-- Step 06 -->
+  <div class="hm-step">
+    <span class="hm-step-num">06</span>
+    <span class="hm-step-role">เภสัชกร - Screen</span>
+    <span class="hm-step-label">เวลาตรวจสอบ</span>
+    <div class="hm-time-group">
+      <input class="time-input" id="hm-step06" maxlength="5" placeholder="HH:MM" inputmode="numeric">
+      <span class="time-suffix">น.</span>
+    </div>
+  </div>
+
+  <!-- Step 07 -->
+  <div class="hm-step">
+    <span class="hm-step-num">07</span>
+    <span class="hm-step-role">เจ้าหน้าที่จัดยา</span>
+    <span class="hm-step-label">เวลาที่ใช้จัดยา</span>
+    <div class="hm-time-group">
+      <span class="time-lbl">เริ่ม</span>
+      <input class="time-input" id="hm-step07-start" maxlength="5" placeholder="HH:MM" inputmode="numeric">
+      <span class="time-lbl" style="margin-left:6px;">เสร็จ</span>
+      <input class="time-input" id="hm-step07-end" maxlength="5" placeholder="HH:MM" inputmode="numeric">
+    </div>
+  </div>
+
+  <!-- Step 08 -->
+  <div class="hm-step">
+    <span class="hm-step-num">08</span>
+    <span class="hm-step-role">เภสัชกร - Check 1</span>
+    <span class="hm-step-label">เวลาจัด</span>
+    <div class="hm-time-group">
+      <span class="time-lbl">เริ่ม</span>
+      <input class="time-input" id="hm-step08-start" maxlength="5" placeholder="HH:MM" inputmode="numeric">
+      <span class="time-lbl" style="margin-left:6px;">เสร็จ</span>
+      <input class="time-input" id="hm-step08-end" maxlength="5" placeholder="HH:MM" inputmode="numeric">
+    </div>
+  </div>
+
+  <!-- Step 09 -->
+  <div class="hm-step">
+    <span class="hm-step-num">09</span>
+    <span class="hm-step-role">Ward</span>
+    <span class="hm-step-label">ส่ง Chart</span>
+    <div class="hm-time-group">
+      <input class="time-input" id="hm-step09-time" maxlength="5" placeholder="HH:MM" inputmode="numeric">
+      <span class="time-suffix">น.</span>
+      <span class="time-lbl" style="margin-left:8px;">วันที่</span>
+      <input type="date" id="hm-step09-date" class="form-input" style="width:auto; max-width:160px;">
+    </div>
+  </div>
+
+  <!-- Step 10 -->
+  <div class="hm-step">
+    <span class="hm-step-num">10</span>
+    <span class="hm-step-role">เภสัชกร - Check 2</span>
+    <span class="hm-step-label">เวลาจ่าย</span>
+    <div class="hm-time-group">
+      <span class="time-lbl">เริ่ม</span>
+      <input class="time-input" id="hm-step10-start" maxlength="5" placeholder="HH:MM" inputmode="numeric">
+      <span class="time-lbl" style="margin-left:6px;">เสร็จ</span>
+      <input class="time-input" id="hm-step10-end" maxlength="5" placeholder="HH:MM" inputmode="numeric">
+    </div>
+  </div>
+</div>
+
+<!-- Bottom: Late Pickup + Remarks -->
+<div class="card">
+  <div class="hm-bottom-row">
+    <label class="hm-check-item" onclick="toggleHMLatePickup()">
+      <input type="checkbox" id="hm-late-pickup">
+      <span class="hm-toggle">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </span>
+      <span>ญาติ/ผู้ป่วยมายื่นรับยาช้า</span>
+    </label>
+    <input class="time-input" id="hm-step11" maxlength="5" placeholder="HH:MM" inputmode="numeric" disabled>
+    <span class="time-suffix">น.</span>
+  </div>
+  <div class="hm-bottom-row" style="margin-top:8px;">
+    <label style="font-weight:600; font-size:14px; white-space:nowrap;">หมายเหตุ</label>
+    <input type="text" id="hm-remarks" class="form-input" style="flex:1;" placeholder="กรอกหมายเหตุ (ถ้ามี)">
+  </div>
+</div>
+
+<!-- Buttons -->
+<div class="btn-group" style="margin-top: 16px;">
+  <button class="btn btn-primary" onclick="submitHMForm()">
+    <i class="fa-solid fa-paper-plane"></i> บันทึกข้อมูล
+  </button>
+  <button class="btn btn-secondary" onclick="resetHMForm()">
+    <i class="fa-solid fa-rotate-left"></i> ล้างข้อมูล
+  </button>
+</div>

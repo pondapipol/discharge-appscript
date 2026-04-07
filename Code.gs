@@ -5,6 +5,22 @@ const SHEET_COUNSELING = 'Counseling_Raw';
 const SHEET_DC = 'DC_Raw';
 const SHEET_PE = 'PE_Raw';
 const SHEET_REPORT = 'Report Summary [new generated]';
+const SHEET_HM = 'HM_Time_Raw';
+const SHEET_FY_SUMMARY = 'Fiscal Year Summary';
+
+const HM_HEADERS = [
+  'Timestamp', 'DischargeDate', 'AN', 'DrugCount', 'Ward',
+  'Step01_DoctorOrderTime', 'Step02_NurseReceiveTime',
+  'Step03_PharmCheckHMStart',
+  'Step04_PharmConsultStart', 'Step04_PharmConsultEnd',
+  'Step05_PharmEditStart', 'Step05_PharmEditEnd',
+  'Step06_PharmVerifyTime',
+  'Step07_DispenseStart', 'Step07_DispenseEnd',
+  'Step08_PharmCheckStart', 'Step08_PharmCheckEnd',
+  'Step09_WardChartTime', 'Step09_WardChartDate',
+  'Step10_PharmCheck2Start', 'Step10_PharmCheck2End',
+  'Step11_LatePickupTime', 'Step12_Remarks'
+];
 
 // Column mapping for counseling checkboxes (0-indexed from column D)
 const COUNSELING_FIELDS = [
@@ -136,8 +152,15 @@ function setupSheets() {
   // PE_Raw headers
   getOrCreateSheet(SHEET_PE, ['Timestamp', 'ErrorDate', 'ErrorCount']);
 
+  // HM_Time_Raw headers
+  const hmSheet = getOrCreateSheet(SHEET_HM, HM_HEADERS);
+  hmSheet.getRange('C:C').setNumberFormat('@'); // AN as text
+
   // Report Summary
   setupReportSummary();
+
+  // Fiscal Year Summary
+  setupFiscalYearSummary();
 }
 
 // ==========================================
@@ -384,6 +407,278 @@ function setupReportSummary() {
 }
 
 // ==========================================
+// Setup Fiscal Year Summary with monthly columns
+// ==========================================
+function setupFiscalYearSummary() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_FY_SUMMARY);
+
+  // Delete and recreate to ensure clean state
+  if (sheet) {
+    ss.deleteSheet(sheet);
+  }
+  sheet = ss.insertSheet(SHEET_FY_SUMMARY);
+
+  // --- Compute current fiscal year (BE) ---
+  const now = new Date();
+  const currentBEYear = now.getFullYear() + 543;
+  const defaultFY = now.getMonth() >= 9 ? currentBEYear + 1 : currentBEYear; // Oct+ = next FY
+
+  // --- Month configuration (Thai fiscal year: Oct-Sep) ---
+  const FY_MONTHS = [
+    { month: 10, yearOffset: -544, thAbbr: 'ต.ค.' },
+    { month: 11, yearOffset: -544, thAbbr: 'พ.ย.' },
+    { month: 12, yearOffset: -544, thAbbr: 'ธ.ค.' },
+    { month: 1,  yearOffset: -543, thAbbr: 'ม.ค.' },
+    { month: 2,  yearOffset: -543, thAbbr: 'ก.พ.' },
+    { month: 3,  yearOffset: -543, thAbbr: 'มี.ค.' },
+    { month: 4,  yearOffset: -543, thAbbr: 'เม.ย.' },
+    { month: 5,  yearOffset: -543, thAbbr: 'พ.ค.' },
+    { month: 6,  yearOffset: -543, thAbbr: 'มิ.ย.' },
+    { month: 7,  yearOffset: -543, thAbbr: 'ก.ค.' },
+    { month: 8,  yearOffset: -543, thAbbr: 'ส.ค.' },
+    { month: 9,  yearOffset: -543, thAbbr: 'ก.ย.' },
+  ];
+
+  // --- Compute column letters for counseling fields ---
+  // Cat 5.1: all fields with category '5.1' (excluding text type)
+  const cat51Cols = [];
+  COUNSELING_FIELDS.forEach(function(f, idx) {
+    if (f.category === '5.1' && f.type !== 'text') {
+      cat51Cols.push(colLetter(idx + 4));
+    }
+  });
+
+  // Cat 5.6: sub-item fields only (exclude top-level Cat_5_6_SJS_TEN_Risk)
+  const cat56Cols = [];
+  COUNSELING_FIELDS.forEach(function(f, idx) {
+    if (f.category === '5.6' && f.subgroup !== null && f.type !== 'text') {
+      cat56Cols.push(colLetter(idx + 4));
+    }
+  });
+
+  // Single-field categories: find their column letters
+  function singleFieldCol(key) {
+    var idx = COUNSELING_FIELDS.findIndex(function(f) { return f.key === key; });
+    return idx >= 0 ? colLetter(idx + 4) : null;
+  }
+  const col52 = singleFieldCol('Cat_5_2_Warfarin');
+  const col54 = singleFieldCol('Cat_5_4_Myanmar_Label');
+  const col53 = singleFieldCol('Cat_5_3_TB');
+  const col57 = singleFieldCol('Cat_5_7_ARV');
+  const col55 = singleFieldCol('Cat_5_5_Stroke_Case');
+
+  // --- Formula builders ---
+  // Single-field COUNTIFS for a month column
+  function singleFieldFormula(monthCol, rawCol) {
+    return '=COUNTIFS(Counseling_Raw!$B$2:$B,">="&' + monthCol + '$3,'
+         + 'Counseling_Raw!$B$2:$B,"<="&EOMONTH(' + monthCol + '$3,0),'
+         + 'Counseling_Raw!$' + rawCol + '$2:$' + rawCol + ',TRUE)';
+  }
+
+  // Multi-field SUMPRODUCT for a month column with OR across multiple columns
+  function multiFieldFormula(monthCol, rawCols) {
+    var dateCond = '(Counseling_Raw!$B$2:$B>=' + monthCol + '$3)*'
+                 + '(Counseling_Raw!$B$2:$B<=EOMONTH(' + monthCol + '$3,0))';
+    var orParts = rawCols.map(function(rc) {
+      return '(Counseling_Raw!$' + rc + '$2:$' + rc + '=TRUE)';
+    }).join('+');
+    return '=SUMPRODUCT(' + dateCond + '*(' + orParts + '))';
+  }
+
+  // Unique patient count for a month column using SUMPRODUCT to count distinct AN
+  function uniquePatientFormula(monthCol) {
+    return '=SUMPRODUCT(IFERROR('
+         + '(Counseling_Raw!$B$2:$B>=' + monthCol + '$3)*'
+         + '(Counseling_Raw!$B$2:$B<=EOMONTH(' + monthCol + '$3,0))*'
+         + '(Counseling_Raw!$C$2:$C<>"")*'
+         + '(1/COUNTIFS('
+         + 'Counseling_Raw!$C$2:$C,Counseling_Raw!$C$2:$C,'
+         + 'Counseling_Raw!$B$2:$B,">="&' + monthCol + '$3,'
+         + 'Counseling_Raw!$B$2:$B,"<="&EOMONTH(' + monthCol + '$3,0)'
+         + ')),0))';
+  }
+
+  // DC total for a month column
+  function dcFormula(monthCol) {
+    return '=IFERROR(SUMIFS(DC_Raw!$C$2:$C,'
+         + 'DC_Raw!$B$2:$B,">="&' + monthCol + '$3,'
+         + 'DC_Raw!$B$2:$B,"<="&EOMONTH(' + monthCol + '$3,0)),0)';
+  }
+
+  // PE total for a month column
+  function peFormula(monthCol) {
+    return '=IFERROR(SUMIFS(PE_Raw!$C$2:$C,'
+         + 'PE_Raw!$B$2:$B,">="&' + monthCol + '$3,'
+         + 'PE_Raw!$B$2:$B,"<="&EOMONTH(' + monthCol + '$3,0)),0)';
+  }
+
+  // ==========================================
+  // Row 1: Title
+  // ==========================================
+  sheet.getRange('A1').setValue('จำนวนผู้ป่วยที่ได้รับการให้คำปรึกษาเรื่องยาผู้ป่วยก่อนกลับบ้าน (Discharge Counseling)');
+
+  // ==========================================
+  // Row 2: Fiscal year selector + explanation
+  // ==========================================
+  var fyOptions = [];
+  for (var y = 2567; y <= 2580; y++) fyOptions.push('ปีงบประมาณ ' + y);
+  sheet.getRange('A2').setValue('ปีงบประมาณ ' + defaultFY);
+  var rule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(fyOptions)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange('A2').setDataValidation(rule);
+  sheet.getRange('C2').setFormula('=$A$2&" = ตุลาคม "&($A$3-1)&" - กันยายน "&$A$3');
+
+  // ==========================================
+  // Row 3: Hidden helper - A3 extracts fiscal year number, B3-M3 month start dates
+  // ==========================================
+  sheet.getRange('A3').setFormula('=VALUE(RIGHT(A2,4))');
+  for (var i = 0; i < 12; i++) {
+    var m = FY_MONTHS[i];
+    sheet.getRange(3, i + 2).setFormula('=DATE($A$3+(' + m.yearOffset + '),' + m.month + ',1)');
+  }
+  sheet.hideRows(3);
+
+  // ==========================================
+  // Row 4: Column headers
+  // ==========================================
+  sheet.getRange('A4').setValue('กลุ่มเป้าหมาย');
+  for (var i = 0; i < 12; i++) {
+    var m = FY_MONTHS[i];
+    var beYearRef = m.month >= 10 ? '$A$3-1' : '$A$3';
+    sheet.getRange(4, i + 2).setFormula('="' + m.thAbbr + '-"&TEXT(MOD(' + beYearRef + ',100),"00")');
+  }
+  sheet.getRange(4, 14).setValue('รวม');
+  sheet.getRange(4, 15).setValue('เฉลี่ยต่อเดือน');
+
+  // ==========================================
+  // Rows 5-11: Category data rows
+  // ==========================================
+  var categoryRows = [
+    { row: 5, label: '1. ผู้ป่วยรายใหม่ที่ได้รับยาเทคนิคพิเศษ', type: 'multi', cols: cat51Cols },
+    { row: 6, label: '2. ผู้ป่วยที่ได้รับยา Warfarin', type: 'single', col: col52 },
+    { row: 7, label: '3. ผู้ป่วยต่างชาติ ได้แก่ ผู้ป่วยเมียนมาร์', type: 'single', col: col54 },
+    { row: 8, label: '4. ผู้ป่วยในกลุ่มวัณโรค (Tuberculosis) รายใหม่', type: 'single', col: col53 },
+    { row: 9, label: '5. ผู้ป่วยในกลุ่มที่ได้รับยา ARV รายใหม่', type: 'single', col: col57 },
+    { row: 10, label: '6. ผู้ป่วยโรคหลอดเลือดสมอง (Stroke) รายใหม่', type: 'single', col: col55 },
+    { row: 11, label: '7. ผู้ป่วยรายใหม่ที่ได้รับยาที่เสี่ยงต่อการเกิด Severe Cutaneous Adverse Reactions (SCARs)', type: 'multi', cols: cat56Cols },
+  ];
+
+  categoryRows.forEach(function(cat) {
+    sheet.getRange(cat.row, 1).setValue(cat.label);
+    for (var c = 0; c < 12; c++) {
+      var monthCol = colLetter(c + 2);
+      if (cat.type === 'single') {
+        sheet.getRange(cat.row, c + 2).setFormula(singleFieldFormula(monthCol, cat.col));
+      } else {
+        sheet.getRange(cat.row, c + 2).setFormula(multiFieldFormula(monthCol, cat.cols));
+      }
+    }
+    // Column N: Total
+    sheet.getRange(cat.row, 14).setFormula('=SUM(B' + cat.row + ':M' + cat.row + ')');
+    // Column O: Average
+    sheet.getRange(cat.row, 15).setFormula('=N' + cat.row + '/12');
+  });
+
+  // ==========================================
+  // Row 12: จำนวนครั้ง (total sessions)
+  // ==========================================
+  sheet.getRange(12, 1).setValue('จำนวนครั้ง');
+  for (var c = 0; c < 12; c++) {
+    var mc = colLetter(c + 2);
+    sheet.getRange(12, c + 2).setFormula('=SUM(' + mc + '5:' + mc + '11)');
+  }
+  sheet.getRange(12, 14).setFormula('=SUM(B12:M12)');
+  sheet.getRange(12, 15).setFormula('=N12/12');
+
+  // ==========================================
+  // Row 13: จำนวนผู้ป่วย (distinct AN)
+  // ==========================================
+  sheet.getRange(13, 1).setValue('จำนวนผู้ป่วย (ราย)');
+  for (var c = 0; c < 12; c++) {
+    var mc = colLetter(c + 2);
+    sheet.getRange(13, c + 2).setFormula(uniquePatientFormula(mc));
+  }
+  sheet.getRange(13, 14).setFormula('=SUM(B13:M13)');
+  sheet.getRange(13, 15).setFormula('=N13/12');
+
+  // ==========================================
+  // Row 14: ผู้ป่วยกลับบ้านทั้งหมด (DC_Raw)
+  // ==========================================
+  sheet.getRange(14, 1).setValue('ผู้ป่วยกลับบ้านทั้งหมด (ราย)');
+  for (var c = 0; c < 12; c++) {
+    var mc = colLetter(c + 2);
+    sheet.getRange(14, c + 2).setFormula(dcFormula(mc));
+  }
+  sheet.getRange(14, 14).setFormula('=SUM(B14:M14)');
+  sheet.getRange(14, 15).setFormula('=N14/12');
+
+  // ==========================================
+  // Row 15: Prescribing Error (PE_Raw)
+  // ==========================================
+  sheet.getRange(15, 1).setValue('จำนวน Prescribing Error ในผู้ป่วยกลับบ้าน');
+  for (var c = 0; c < 12; c++) {
+    var mc = colLetter(c + 2);
+    sheet.getRange(15, c + 2).setFormula(peFormula(mc));
+  }
+  sheet.getRange(15, 14).setFormula('=SUM(B15:M15)');
+  sheet.getRange(15, 15).setFormula('=N15/12');
+
+  // ==========================================
+  // Row 16: PE rate per 1,000
+  // ==========================================
+  sheet.getRange(16, 1).setValue('อัตราการเกิด Prescribing Error ในผู้ป่วยกลับบ้าน (อัตราต่อ 1,000 ผู้ป่วยจำหน่าย)');
+  for (var c = 0; c < 12; c++) {
+    var mc = colLetter(c + 2);
+    sheet.getRange(16, c + 2).setFormula('=IFERROR(' + mc + '15/' + mc + '14*1000,0)');
+  }
+  sheet.getRange(16, 14).setFormula('=IFERROR(N15/N14*1000,0)');
+  sheet.getRange(16, 15).setFormula('=IFERROR(O15/O14*1000,0)');
+  sheet.getRange(16, 2, 1, 14).setNumberFormat('0.00');
+
+  // ==========================================
+  // Formatting
+  // ==========================================
+
+  // Row 1: Title
+  sheet.getRange(1, 1, 1, 15).setFontWeight('bold').setFontSize(14).setHorizontalAlignment('center');
+
+  // Row 2: FY selector
+  sheet.getRange('A2').setFontWeight('bold').setBackground('#666666').setFontColor('#FFFFFF');
+
+  // Row 4: Headers
+  sheet.getRange(4, 1, 1, 15).setFontWeight('bold').setBackground('#A7B5FE').setFontColor('#FFFFFF')
+    .setHorizontalAlignment('center');
+  sheet.getRange(4, 1).setHorizontalAlignment('left');
+
+  // Category rows (5-11): light background for labels
+  sheet.getRange(5, 1, 7, 1).setBackground('#E0F0F3');
+
+  // Row 12: Total sessions (bold, honey background)
+  sheet.getRange(12, 1, 1, 15).setFontWeight('bold').setBackground('#FFF3D6');
+
+  // Rows 13-16: Summary rows (bold)
+  sheet.getRange(13, 1, 4, 15).setFontWeight('bold');
+
+  // Center-align data columns (B-O, rows 5-16)
+  sheet.getRange(5, 2, 12, 14).setHorizontalAlignment('center');
+
+  // Column widths
+  sheet.setColumnWidth(1, 350);
+  for (var c = 2; c <= 13; c++) {
+    sheet.setColumnWidth(c, 100);
+  }
+  sheet.setColumnWidth(14, 80);
+  sheet.setColumnWidth(15, 130);
+
+  // Freeze header row and label column
+  sheet.setFrozenRows(4);
+  sheet.setFrozenColumns(1);
+}
+
+// ==========================================
 // Get field config (for client)
 // ==========================================
 function getCounselingFieldConfig() {
@@ -496,6 +791,82 @@ function submitPEData(formData) {
 
   sheet.appendRow([new Date(), new Date(formData.errorDate), count]);
   return { success: true, message: 'บันทึกข้อมูล Prescribing Error สำเร็จ' };
+}
+
+// ==========================================
+// Submit HM Time Data (upsert by AN + date)
+// ==========================================
+function submitHMData(formData) {
+  if (!formData.an || !/^\d{9}$/.test(formData.an)) {
+    return { success: false, error: 'AN ต้องเป็นตัวเลข 9 หลัก' };
+  }
+  if (!formData.dischargeDate) {
+    return { success: false, error: 'กรุณาเลือกวันที่ Discharge' };
+  }
+  const drugCount = parseInt(formData.drugCount, 10);
+  if (isNaN(drugCount) || drugCount < 1) {
+    return { success: false, error: 'กรุณากรอกจำนวนยาที่ถูกต้อง' };
+  }
+  if (!formData.ward) {
+    return { success: false, error: 'กรุณาเลือก Ward' };
+  }
+
+  const sheet = getOrCreateSheet(SHEET_HM, HM_HEADERS);
+  const data = sheet.getDataRange().getValues();
+  const targetDate = new Date(formData.dischargeDate).toDateString();
+  const targetAN = String(formData.an);
+
+  // Check for existing row with same AN + same date
+  let existingRowIdx = -1;
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][2]) === targetAN && data[i][1] && new Date(data[i][1]).toDateString() === targetDate) {
+      existingRowIdx = i + 1;
+      break;
+    }
+  }
+
+  if (existingRowIdx > 0 && !formData.forceUpsert) {
+    return { success: false, confirmUpsert: true, message: 'AN ' + targetAN + ' มีข้อมูลวันที่เดียวกันแล้ว ต้องการแทนที่ด้วยข้อมูลล่าสุดหรือไม่?' };
+  }
+
+  const step09Date = formData.step09Date ? new Date(formData.step09Date) : '';
+
+  const row = [
+    new Date(),
+    new Date(formData.dischargeDate),
+    formData.an,
+    drugCount,
+    formData.ward,
+    formData.step01 || '',
+    formData.step02 || '',
+    formData.step03 || '',
+    formData.step04Start || '',
+    formData.step04End || '',
+    formData.step05Start || '',
+    formData.step05End || '',
+    formData.step06 || '',
+    formData.step07Start || '',
+    formData.step07End || '',
+    formData.step08Start || '',
+    formData.step08End || '',
+    formData.step09Time || '',
+    step09Date,
+    formData.step10Start || '',
+    formData.step10End || '',
+    formData.step11 || '',
+    formData.remarks || ''
+  ];
+
+  if (existingRowIdx > 0) {
+    sheet.getRange(existingRowIdx, 1, 1, row.length).setValues([row]);
+    sheet.getRange(existingRowIdx, 3).setNumberFormat('@');
+    return { success: true, message: 'อัพเดทข้อมูล HM Time สำเร็จ' };
+  } else {
+    sheet.appendRow(row);
+    const lastRow = sheet.getLastRow();
+    sheet.getRange(lastRow, 3).setNumberFormat('@');
+    return { success: true, message: 'บันทึกข้อมูล HM Time สำเร็จ' };
+  }
 }
 
 // ==========================================

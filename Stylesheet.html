@@ -927,6 +927,148 @@
   }
 
   /* ==========================================
+     HM Time - Step Rows
+     ========================================== */
+  .hm-step {
+    display: grid;
+    grid-template-columns: 40px 160px 160px 1fr;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid #E5E7EB;
+    gap: 8px;
+  }
+  .hm-step:last-child {
+    border-bottom: none;
+  }
+
+  .hm-step-num {
+    width: 28px;
+    height: 28px;
+    background: var(--sea-breeze);
+    color: #fff;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+
+  .hm-step-role {
+    font-size: 14px;
+    color: var(--text-light);
+    font-weight: 500;
+  }
+
+  .hm-step-label {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  .hm-time-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .time-input {
+    width: 72px;
+    height: 38px;
+    border: 2px solid #E5E7EB;
+    border-radius: var(--radius-sm);
+    text-align: center;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    font-family: 'Athiti', sans-serif;
+    color: var(--text);
+    background: var(--white);
+    outline: none;
+    transition: border-color var(--transition), box-shadow var(--transition);
+  }
+  .time-input:focus {
+    border-color: var(--periwinkle);
+    box-shadow: 0 0 0 3px rgba(167, 181, 254, 0.2);
+  }
+  .time-input.filled {
+    border-color: var(--sea-breeze);
+    background: var(--sea-breeze-light);
+  }
+  .time-input:disabled {
+    background: #F8FAFC;
+    color: #CBD5E1;
+    cursor: not-allowed;
+  }
+
+  .time-lbl {
+    font-size: 12px;
+    color: var(--text-light);
+    font-weight: 600;
+    min-width: 28px;
+  }
+
+  .time-suffix {
+    font-size: 13px;
+    color: var(--text-light);
+  }
+
+  /* HM Bottom rows (late pickup, remarks) */
+  .hm-bottom-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+  }
+
+  .hm-check-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    user-select: none;
+  }
+
+  .hm-check-item input[type="checkbox"] {
+    display: none;
+  }
+
+  .hm-toggle {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #D1D5DB;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    background: #fff;
+  }
+
+  .hm-toggle svg {
+    width: 12px;
+    height: 12px;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: all 0.15s;
+  }
+
+  .hm-check-item input[type="checkbox"]:checked + .hm-toggle {
+    background: var(--honey);
+    border-color: var(--honey);
+  }
+
+  .hm-check-item input[type="checkbox"]:checked + .hm-toggle svg {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  /* ==========================================
      Responsive
      ========================================== */
   @media (max-width: 768px) {
@@ -1001,6 +1143,26 @@
 
     .chart-filter select {
       max-width: 100%;
+    }
+
+    .hm-step {
+      grid-template-columns: 32px 1fr;
+      row-gap: 2px;
+    }
+    .hm-step-role {
+      grid-column: 2;
+      font-size: 13px;
+    }
+    .hm-step-label {
+      grid-column: 1 / -1;
+      padding-left: 40px;
+    }
+    .hm-time-group {
+      grid-column: 1 / -1;
+      padding-left: 40px;
+    }
+    .hm-bottom-row {
+      flex-wrap: wrap;
     }
   }
   /* SCARs detail table — allow drug name cell to wrap */

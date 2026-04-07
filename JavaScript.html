@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function initForms() {
   const today = new Date().toISOString().split('T')[0];
-  var dateFields = ['counseling-date', 'dc-date', 'pe-date'];
+  var dateFields = ['counseling-date', 'dc-date', 'pe-date', 'hm-date'];
   dateFields.forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.value = today;
@@ -58,6 +58,20 @@ function initForms() {
       }
     });
   }
+
+  // HM AN input: only allow digits
+  var hmAnInput = document.getElementById('hm-an');
+  if (hmAnInput) {
+    hmAnInput.addEventListener('input', function() {
+      this.value = this.value.replace(/\D/g, '');
+      if (this.classList.contains('error')) {
+        validateHMAN();
+      }
+    });
+  }
+
+  // HM Time inputs: auto-format HH:MM
+  initTimeInputs();
 }
 
 // ==========================================
@@ -350,6 +364,173 @@ function resetPEForm() {
   document.getElementById('pe-count').value = '';
   document.getElementById('pe-count').classList.remove('error');
   document.getElementById('pe-error').classList.remove('visible');
+}
+
+// ==========================================
+// HM Time Form
+// ==========================================
+function initTimeInputs() {
+  document.querySelectorAll('.time-input').forEach(function(input) {
+    input.addEventListener('input', function() {
+      var raw = this.value.replace(/\D/g, '');
+      if (raw.length > 4) raw = raw.slice(0, 4);
+      if (raw.length > 2) {
+        this.value = raw.slice(0, 2) + ':' + raw.slice(2);
+      } else {
+        this.value = raw;
+      }
+      this.classList.toggle('filled', raw.length === 4);
+    });
+
+    input.addEventListener('focus', function() { this.select(); });
+
+    input.addEventListener('blur', function() {
+      var raw = this.value.replace(/\D/g, '');
+      if (raw.length === 4) {
+        var h = parseInt(raw.slice(0, 2));
+        var m = parseInt(raw.slice(2, 4));
+        if (h > 23 || m > 59) {
+          this.value = '';
+          this.classList.remove('filled');
+        }
+      } else if (raw.length > 0) {
+        this.value = '';
+        this.classList.remove('filled');
+      }
+    });
+  });
+}
+
+function validateHMAN() {
+  var input = document.getElementById('hm-an');
+  var error = document.getElementById('hm-an-error');
+  var value = input.value.trim();
+  if (!value || !/^\d{9}$/.test(value)) {
+    input.classList.add('error');
+    error.classList.add('visible');
+    return false;
+  }
+  input.classList.remove('error');
+  error.classList.remove('visible');
+  return true;
+}
+
+function toggleHMLatePickup() {
+  var cb = document.getElementById('hm-late-pickup');
+  cb.checked = !cb.checked;
+  var timeInput = document.getElementById('hm-step11');
+  timeInput.disabled = !cb.checked;
+  if (!cb.checked) {
+    timeInput.value = '';
+    timeInput.classList.remove('filled');
+  }
+}
+
+function submitHMForm(forceUpsert) {
+  var date = document.getElementById('hm-date').value;
+  if (!date) { showToast('กรุณาเลือกวันที่ Discharge', 'error'); return; }
+
+  if (!validateHMAN()) { showToast('กรุณากรอก AN ให้ครบ 9 หลัก', 'error'); return; }
+
+  var drugCountStr = document.getElementById('hm-drug-count').value;
+  var drugCount = parseInt(drugCountStr, 10);
+  var drugError = document.getElementById('hm-drug-error');
+  if (isNaN(drugCount) || drugCount < 1) {
+    document.getElementById('hm-drug-count').classList.add('error');
+    drugError.classList.add('visible');
+    showToast('กรุณากรอกจำนวนยาที่ถูกต้อง', 'error');
+    return;
+  }
+  document.getElementById('hm-drug-count').classList.remove('error');
+  drugError.classList.remove('visible');
+
+  var ward = document.getElementById('hm-ward').value;
+  var wardError = document.getElementById('hm-ward-error');
+  if (!ward) {
+    document.getElementById('hm-ward').classList.add('error');
+    wardError.classList.add('visible');
+    showToast('กรุณาเลือก Ward', 'error');
+    return;
+  }
+  document.getElementById('hm-ward').classList.remove('error');
+  wardError.classList.remove('visible');
+
+  var formData = {
+    dischargeDate: date,
+    an: document.getElementById('hm-an').value.trim(),
+    drugCount: drugCountStr,
+    ward: ward,
+    step01: document.getElementById('hm-step01').value,
+    step02: document.getElementById('hm-step02').value,
+    step03: document.getElementById('hm-step03').value,
+    step04Start: document.getElementById('hm-step04-start').value,
+    step04End: document.getElementById('hm-step04-end').value,
+    step05Start: document.getElementById('hm-step05-start').value,
+    step05End: document.getElementById('hm-step05-end').value,
+    step06: document.getElementById('hm-step06').value,
+    step07Start: document.getElementById('hm-step07-start').value,
+    step07End: document.getElementById('hm-step07-end').value,
+    step08Start: document.getElementById('hm-step08-start').value,
+    step08End: document.getElementById('hm-step08-end').value,
+    step09Time: document.getElementById('hm-step09-time').value,
+    step09Date: document.getElementById('hm-step09-date').value,
+    step10Start: document.getElementById('hm-step10-start').value,
+    step10End: document.getElementById('hm-step10-end').value,
+    step11: document.getElementById('hm-step11').value,
+    remarks: document.getElementById('hm-remarks').value.trim(),
+    forceUpsert: forceUpsert || false
+  };
+
+  showLoading();
+  google.script.run
+    .withSuccessHandler(function(result) {
+      hideLoading();
+      if (result.confirmUpsert) {
+        if (confirm(result.message)) {
+          submitHMForm(true);
+        }
+      } else if (result.success) {
+        showToast(result.message, 'success');
+        resetHMForm();
+      } else {
+        showToast(result.error, 'error');
+      }
+    })
+    .withFailureHandler(function(err) {
+      hideLoading();
+      showToast('เกิดข้อผิดพลาด: ' + err.message, 'error');
+    })
+    .submitHMData(formData);
+}
+
+function resetHMForm() {
+  var today = new Date().toISOString().split('T')[0];
+  document.getElementById('hm-date').value = today;
+  document.getElementById('hm-an').value = '';
+  document.getElementById('hm-an').classList.remove('error');
+  document.getElementById('hm-an-error').classList.remove('visible');
+  document.getElementById('hm-drug-count').value = '';
+  document.getElementById('hm-drug-count').classList.remove('error');
+  document.getElementById('hm-drug-error').classList.remove('visible');
+  document.getElementById('hm-ward').value = '';
+  document.getElementById('hm-ward').classList.remove('error');
+  document.getElementById('hm-ward-error').classList.remove('visible');
+
+  var timeIds = ['hm-step01', 'hm-step02', 'hm-step03',
+    'hm-step04-start', 'hm-step04-end', 'hm-step05-start', 'hm-step05-end',
+    'hm-step06', 'hm-step07-start', 'hm-step07-end',
+    'hm-step08-start', 'hm-step08-end', 'hm-step09-time',
+    'hm-step10-start', 'hm-step10-end', 'hm-step11'];
+  timeIds.forEach(function(id) {
+    var el = document.getElementById(id);
+    el.value = '';
+    el.classList.remove('filled');
+  });
+
+  document.getElementById('hm-step09-date').value = '';
+  document.getElementById('hm-remarks').value = '';
+  document.getElementById('hm-late-pickup').checked = false;
+  document.getElementById('hm-step11').disabled = true;
 }
 
 // ==========================================

@@ -34,6 +34,10 @@
         <i class="fa-solid fa-triangle-exclamation"></i>
         <span>PE Count</span>
       </a>
+      <a class="nav-item" data-page="hm" onclick="switchPage('hm')">
+        <i class="fa-solid fa-clock"></i>
+        <span>HM Time</span>
+      </a>
       <a class="nav-item" data-page="report" onclick="switchPage('report')">
         <i class="fa-solid fa-file-lines"></i>
         <span>Report</span>
@@ -54,6 +58,9 @@
     </div>
     <div id="page-pe" class="page">
       <?!= include('Page_PE') ?>
+    </div>
+    <div id="page-hm" class="page">
+      <?!= include('Page_HM') ?>
     </div>
     <div id="page-report" class="page">
       <?!= include('Page_Report') ?>
