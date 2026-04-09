@@ -10,7 +10,8 @@ const SHEET_FY_SUMMARY = 'Fiscal Year Summary';
 
 const HM_HEADERS = [
   'Timestamp', 'DischargeDate', 'AN', 'DrugCount', 'Ward',
-  'Step01_DoctorOrderTime', 'Step02_NurseReceiveTime',
+  'Step01_DoctorOrderTime', 'Step01_DoctorOrderDate',
+  'Step02_NurseReceiveTime', 'Step02_NurseReceiveDate',
   'Step03_PharmCheckHMStart',
   'Step04_PharmConsultStart', 'Step04_PharmConsultEnd',
   'Step05_PharmEditStart', 'Step05_PharmEditEnd',
@@ -155,6 +156,10 @@ function setupSheets() {
   // HM_Time_Raw headers
   const hmSheet = getOrCreateSheet(SHEET_HM, HM_HEADERS);
   hmSheet.getRange('C:C').setNumberFormat('@'); // AN as text
+  if (hmSheet.getLastColumn() !== HM_HEADERS.length) {
+    hmSheet.getRange(1, 1, 1, HM_HEADERS.length).setValues([HM_HEADERS]);
+    hmSheet.getRange(1, 1, 1, HM_HEADERS.length).setFontWeight('bold');
+  }
 
   // Report Summary
   setupReportSummary();
@@ -838,7 +843,9 @@ function submitHMData(formData) {
     drugCount,
     formData.ward,
     formData.step01 || '',
+    formData.step01Date ? new Date(formData.step01Date) : '',
     formData.step02 || '',
+    formData.step02Date ? new Date(formData.step02Date) : '',
     formData.step03 || '',
     formData.step04Start || '',
     formData.step04End || '',

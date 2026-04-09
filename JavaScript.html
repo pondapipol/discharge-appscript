@@ -461,7 +461,9 @@ function submitHMForm(forceUpsert) {
     drugCount: drugCountStr,
     ward: ward,
     step01: document.getElementById('hm-step01').value,
+    step01Date: document.getElementById('hm-step01-date').value,
     step02: document.getElementById('hm-step02').value,
+    step02Date: document.getElementById('hm-step02-date').value,
     step03: document.getElementById('hm-step03').value,
     step04Start: document.getElementById('hm-step04-start').value,
     step04End: document.getElementById('hm-step04-end').value,
@@ -527,6 +529,8 @@ function resetHMForm() {
     el.classList.remove('filled');
   });
 
+  document.getElementById('hm-step01-date').value = '';
+  document.getElementById('hm-step02-date').value = '';
   document.getElementById('hm-step09-date').value = '';
   document.getElementById('hm-remarks').value = '';
   document.getElementById('hm-late-pickup').checked = false;
