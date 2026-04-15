@@ -64,10 +64,10 @@ const COUNSELING_FIELDS = [
   { key: 'Cat_5_1_SpecialOther_Alendronate', label: 'Alendronate', category: '5.1', subgroup: 'ยาเทคนิคพิเศษอื่น ๆ' },
   // 5.2 - 5.6
   { key: 'Cat_5_2_Warfarin', label: '2. แนะนำการใช้ยา Warfarin', category: '5.2', subgroup: null },
-  { key: 'Cat_5_3_TB', label: '3. แนะนำการใช้ยาในผู้ป่วย Tuberculosis รายใหม่', category: '5.3', subgroup: null },
-  { key: 'Cat_5_4_Myanmar_Label', label: '4. ผู้ป่วยพม่า ออกฉลากภาษาพม่า', category: '5.4', subgroup: null },
-  { key: 'Cat_5_5_Stroke_Case', label: '5. แนะนำ ผู้ป่วย Stroke Case', category: '5.5', subgroup: null },
-  { key: 'Cat_5_6_SJS_TEN_Risk', label: '6. แนะนำ ผู้ป่วยรายใหม่ที่ได้รับยาเสี่ยงต่อการเกิด SCARs', category: '5.6', subgroup: null },
+  { key: 'Cat_5_3_TB', label: '3. แนะนำการใช้ยาในผู้ป่วย Tuberculosis', category: '5.3', subgroup: null },
+  { key: 'Cat_5_4_Myanmar_Label', label: '4. แนะนำการใช้ยาในผู้ป่วยเมียนมาร์', category: '5.4', subgroup: null },
+  { key: 'Cat_5_5_Stroke_Case', label: '5. แนะนำการใช้ยาในผู้ป่วยโรคหลอดเลือดสมองรายใหม่', category: '5.5', subgroup: null },
+  { key: 'Cat_5_6_SJS_TEN_Risk', label: '6. แนะนำการใช้ยาที่มีความเสี่ยงต่อการเกิด SCARs ในผู้ป่วยรายใหม่', category: '5.6', subgroup: null },
   // 5.6 ยาที่เสี่ยงต่อการเกิด SCARs
   { key: 'Cat_5_6_SCARs_Allopurinol', label: 'Allopurinol', category: '5.6', subgroup: 'ยาที่เสี่ยงต่อการเกิด SCARs' },
   { key: 'Cat_5_6_SCARs_TMP_SMX', label: 'Trimethoprim + Sulfamethoxazole (Bactrim)', category: '5.6', subgroup: 'ยาที่เสี่ยงต่อการเกิด SCARs' },
@@ -76,7 +76,7 @@ const COUNSELING_FIELDS = [
   { key: 'Cat_5_6_SCARs_Phenytoin', label: 'Phenytoin', category: '5.6', subgroup: 'ยาที่เสี่ยงต่อการเกิด SCARs' },
   { key: 'Cat_5_6_SCARs_Nevirapine', label: 'Nevirapine', category: '5.6', subgroup: 'ยาที่เสี่ยงต่อการเกิด SCARs' },
   // 5.7 - 5.8
-  { key: 'Cat_5_7_ARV', label: '7. แนะนำการใช้ยาในผู้ป่วย ARV รายใหม่', category: '5.7', subgroup: null },
+  { key: 'Cat_5_7_ARV', label: '7. แนะนำการใช้ยาในผู้ป่วย ARV', category: '5.7', subgroup: null },
   { key: 'Cat_5_8_Other', label: '8. อื่น ๆ', category: '5.8', subgroup: null },
   { key: 'Cat_5_8_Other_Text', label: 'รายละเอียด อื่น ๆ', category: '5.8', subgroup: null, type: 'text' },
   // Appended at end to preserve existing column positions
@@ -252,9 +252,9 @@ function setupReportSummary() {
   // 5.2 - 5.5 (standalone categories)
   const topLevelLabels = {
     '5.2': '2. แนะนำการใช้ยา Warfarin',
-    '5.3': '3. แนะนำการใช้ยาในผู้ป่วย Tuberculosis รายใหม่',
-    '5.4': '4. ผู้ป่วยพม่า ออกฉลากภาษาพม่า',
-    '5.5': '5. แนะนำ ผู้ป่วย Stroke Case'
+    '5.3': '3. แนะนำการใช้ยาในผู้ป่วย Tuberculosis',
+    '5.4': '4. แนะนำการใช้ยาในผู้ป่วยเมียนมาร์',
+    '5.5': '5. แนะนำการใช้ยาในผู้ป่วยโรคหลอดเลือดสมองรายใหม่'
   };
 
   // Track all top-level category header rows for total SUM
@@ -272,7 +272,7 @@ function setupReportSummary() {
   });
 
   // 5.6 Section (with sub-items like 5.1)
-  const sec56 = buildCategoryWithItems('5.6', '6. แนะนำ ผู้ป่วยรายใหม่ที่ได้รับยาเสี่ยงต่อการเกิด SCARs');
+  const sec56 = buildCategoryWithItems('5.6', '6. แนะนำการใช้ยาที่มีความเสี่ยงต่อการเกิด SCARs ในผู้ป่วยรายใหม่');
   allCategoryHeaderRows.push(sec56.sectionHeaderRow);
 
   // 5.7 ARV
@@ -281,7 +281,7 @@ function setupReportSummary() {
     sectionHeaderRows.push(currentRow);
     allCategoryHeaderRows.push(currentRow);
     formulaRows.push([currentRow, drugFormula(field57Idx)]);
-    rows.push(['7. แนะนำการใช้ยาในผู้ป่วย ARV รายใหม่', '', RESULT_TEXT]);
+    rows.push(['7. แนะนำการใช้ยาในผู้ป่วย ARV', '', RESULT_TEXT]);
     currentRow++;
   }
 
@@ -565,9 +565,9 @@ function setupFiscalYearSummary() {
     { row: 5, label: '1. ผู้ป่วยรายใหม่ที่ได้รับยาเทคนิคพิเศษ', type: 'multi', cols: cat51Cols },
     { row: 6, label: '2. ผู้ป่วยที่ได้รับยา Warfarin', type: 'single', col: col52 },
     { row: 7, label: '3. ผู้ป่วยต่างชาติ ได้แก่ ผู้ป่วยเมียนมาร์', type: 'single', col: col54 },
-    { row: 8, label: '4. ผู้ป่วยในกลุ่มวัณโรค (Tuberculosis) รายใหม่', type: 'single', col: col53 },
-    { row: 9, label: '5. ผู้ป่วยในกลุ่มที่ได้รับยา ARV รายใหม่', type: 'single', col: col57 },
-    { row: 10, label: '6. ผู้ป่วยโรคหลอดเลือดสมอง (Stroke) รายใหม่', type: 'single', col: col55 },
+    { row: 8, label: '4. ผู้ป่วยในกลุ่มวัณโรค (Tuberculosis)', type: 'single', col: col53 },
+    { row: 9, label: '5. ผู้ป่วยในกลุ่มที่ได้รับยา ARV', type: 'single', col: col57 },
+    { row: 10, label: '6. ผู้ป่วยโรคหลอดเลือดสมอง (Stroke)', type: 'single', col: col55 },
     { row: 11, label: '7. ผู้ป่วยรายใหม่ที่ได้รับยาที่เสี่ยงต่อการเกิด Severe Cutaneous Adverse Reactions (SCARs)', type: 'multi', cols: cat56Cols },
   ];
 

@@ -1,6 +1,5 @@
 <div class="page-header">
   <h1><i class="fa-solid fa-chart-line"></i> Dashboard</h1>
-  <p>ภาพรวมข้อมูลการให้คำแนะนำและ Discharge</p>
 </div>
 
 <!-- Month Selector -->
@@ -18,11 +17,11 @@
 <div class="stat-cards">
   <div class="stat-card">
     <div class="stat-value" id="stat-counseling">-</div>
-    <div class="stat-label">Counseling ทั้งหมด (คน)</div>
+    <div class="stat-label">จำนวนผู้ป่วยที่ได้รับการทำ Counseling ทั้งหมด (ราย)</div>
   </div>
   <div class="stat-card">
     <div class="stat-value" id="stat-discharge">-</div>
-    <div class="stat-label">Discharge ทั้งหมด (ราย)</div>
+    <div class="stat-label">จำนวนผู้ป่วยที่ถูกจำหน่ายทั้งหมด (ราย)</div>
   </div>
   <div class="stat-card">
     <div class="stat-value" id="stat-pe">-</div>
@@ -34,7 +33,7 @@
 <div class="card full-width" style="margin-bottom: 20px;">
   <div class="card-header">
     <i class="fa-solid fa-table" style="color: var(--periwinkle);"></i>
-    สรุปข้อมูลรายเดือน
+    ตารางสรุปข้อมูล Discharge Counseling รายเดือน
     <span class="chart-month-label" id="summary-month-label"></span>
   </div>
   <div style="overflow-x: auto;">
@@ -106,11 +105,11 @@
       <select id="chart-category-filter" onchange="onCategoryFilterChange()">
         <option value="5.1">1. แนะนำการใช้ยาเทคนิคพิเศษ</option>
         <option value="5.2">2. แนะนำการใช้ยา Warfarin</option>
-        <option value="5.3">3. แนะนำการใช้ยาในผู้ป่วย TB รายใหม่</option>
-        <option value="5.4">4. ผู้ป่วยพม่า ออกฉลากภาษาพม่า</option>
-        <option value="5.5">5. แนะนำ ผู้ป่วย Stroke Case</option>
-        <option value="5.6">6. แนะนำ ผู้ป่วยที่ได้รับยาเสี่ยง SCARs</option>
-        <option value="5.7">7. แนะนำการใช้ยาในผู้ป่วย ARV รายใหม่</option>
+        <option value="5.3">3. แนะนำการใช้ยาในผู้ป่วย Tuberculosis</option>
+        <option value="5.4">4. แนะนำการใช้ยาในผู้ป่วยเมียนมาร์</option>
+        <option value="5.5">5. แนะนำการใช้ยาในผู้ป่วยโรคหลอดเลือดสมองรายใหม่</option>
+        <option value="5.6">6. แนะนำการใช้ยาที่มีความเสี่ยงต่อการเกิด SCARs ในผู้ป่วยรายใหม่</option>
+        <option value="5.7">7. แนะนำการใช้ยาในผู้ป่วย ARV</option>
         <option value="5.8">8. อื่น ๆ</option>
       </select>
     </div>
@@ -123,7 +122,7 @@
   <div class="card">
     <div class="card-header">
       <i class="fa-solid fa-bed" style="color: var(--periwinkle);"></i>
-      จำนวน Discharge รายวัน
+      จำนวนผู้ป่วยที่ถูกจำหน่าย รายวัน
       <span class="chart-month-label" id="chart3-month-label"></span>
     </div>
     <div class="chart-container">
@@ -135,7 +134,7 @@
   <div class="card">
     <div class="card-header">
       <i class="fa-solid fa-triangle-exclamation" style="color: var(--honey);"></i>
-      จำนวน Prescribing Error ย้อนหลัง 6 เดือน
+      จำนวน Prescribing Error จากการทำ Medication Reconciliation
     </div>
     <div class="chart-container">
       <canvas id="chart-pe-monthly"></canvas>
@@ -149,7 +148,7 @@
   <div class="card">
     <div class="card-header" style="display:flex; align-items:center; gap:8px;">
       <i class="fa-solid fa-list-ul" style="color: var(--honey);"></i>
-      <span>รายชื่อผู้ป่วยที่ได้รับยาเสี่ยง SCARs</span>
+      <span>รายชื่อผู้ป่วยที่ได้รับยาที่มีความเสี่ยงต่อการเกิด SCARs</span>
       <button class="btn btn-secondary btn-sm" id="btn-download-scars"
               onclick="downloadSCARsXLSX()"
               style="margin-left:auto;" disabled>
