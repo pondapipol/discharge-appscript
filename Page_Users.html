@@ -1,0 +1,55 @@
+<div class="page-header">
+  <h1><i class="fa-solid fa-users-gear"></i> จัดการผู้ใช้งาน</h1>
+  <p>เพิ่ม แก้ไข หรือลบผู้ใช้งานและกำหนดสิทธิ์การเข้าถึง</p>
+</div>
+
+<!-- Add/Edit User Form -->
+<div class="card" style="margin-bottom: 20px;">
+  <div class="card-header">
+    <i class="fa-solid fa-user-plus" style="color: var(--sea-breeze);"></i>
+    เพิ่ม / แก้ไขผู้ใช้งาน
+  </div>
+  <div class="form-row">
+    <div class="form-group">
+      <label class="required">อีเมล</label>
+      <input type="email" id="user-email" class="form-input" placeholder="example@email.com">
+    </div>
+    <div class="form-group">
+      <label class="required">Role</label>
+      <select id="user-role" class="form-input">
+        <option value="">-- เลือก Role --</option>
+      </select>
+    </div>
+  </div>
+  <div class="btn-group">
+    <button class="btn btn-primary" onclick="saveUser()">
+      <i class="fa-solid fa-save"></i> บันทึก
+    </button>
+    <button class="btn btn-secondary" onclick="clearUserForm()">
+      <i class="fa-solid fa-eraser"></i> ล้าง
+    </button>
+  </div>
+</div>
+
+<!-- Users Table -->
+<div class="card">
+  <div class="card-header">
+    <i class="fa-solid fa-list" style="color: var(--periwinkle);"></i>
+    รายชื่อผู้ใช้งานทั้งหมด
+    <button class="btn btn-secondary btn-sm" onclick="loadUsers()" style="margin-left: auto;" title="รีเฟรช">
+      <i class="fa-solid fa-rotate-right"></i>
+    </button>
+  </div>
+  <table class="summary-table" id="users-table">
+    <thead>
+      <tr>
+        <th>อีเมล</th>
+        <th>Role</th>
+        <th style="text-align: center; width: 120px;">จัดการ</th>
+      </tr>
+    </thead>
+    <tbody id="users-table-body">
+      <tr><td colspan="3" style="text-align: center; color: var(--text-light);">กำลังโหลด...</td></tr>
+    </tbody>
+  </table>
+</div>

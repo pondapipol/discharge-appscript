@@ -6,7 +6,11 @@ const SHEET_DC = 'DC_Raw';
 const SHEET_PE = 'PE_Raw';
 const SHEET_REPORT = 'Report Summary [new generated]';
 const SHEET_HM = 'HM_Time_Raw';
-const SHEET_FY_SUMMARY = 'Fiscal Year Summary';
+const SHEET_FY_SUMMARY = 'Fiscal Year Summary [new generated]';
+const SHEET_AUTH_USERS = 'Auth_Users';
+const SHEET_AUTH_ROLES = 'Auth_Roles';
+
+const AUTH_PAGES = ['dashboard', 'counseling', 'count', 'hm', 'report', 'users'];
 
 const HM_HEADERS = [
   'Timestamp', 'DischargeDate', 'AN', 'DrugCount', 'Ward',
@@ -88,6 +92,7 @@ const COUNSELING_FIELDS = [
 // ==========================================
 function doGet(e) {
   const template = HtmlService.createTemplateFromFile('Index');
+  template.userAuth = JSON.stringify(getUserAuth());
   return template.evaluate()
     .setTitle('Discharge Counseling Tracker')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
@@ -96,6 +101,165 @@ function doGet(e) {
 
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+// ==========================================
+// Authorization
+// ==========================================
+function getUserAuth() {
+  // Get current user email
+  var email = '';
+  try { email = Session.getActiveUser().getEmail(); } catch (e) {}
+  if (!email) {
+    try { email = Session.getEffectiveUser().getEmail(); } catch (e) {}
+  }
+  if (!email) {
+    try {
+      var token = ScriptApp.getOAuthToken();
+      var res = UrlFetchApp.fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { 'Authorization': 'Bearer ' + token },
+        muteHttpExceptions: true
+      });
+      if (res.getResponseCode() === 200) {
+        email = JSON.parse(res.getContentText()).email || '';
+      }
+    } catch (e) {}
+  }
+  email = (email || '').toLowerCase().trim();
+
+  if (!email) {
+    return { authorized: false, email: '', reason: 'ไม่สามารถระบุอีเมลผู้ใช้ได้' };
+  }
+
+  const ss = getSpreadsheet();
+
+  // Look up user in Auth_Users sheet
+  const usersSheet = ss.getSheetByName(SHEET_AUTH_USERS);
+  if (!usersSheet || usersSheet.getLastRow() <= 1) {
+    return { authorized: false, email: email, reason: 'ไม่พบตาราง Auth_Users' };
+  }
+  const usersData = usersSheet.getRange(2, 1, usersSheet.getLastRow() - 1, 2).getValues();
+  let role = null;
+  for (let i = 0; i < usersData.length; i++) {
+    if (String(usersData[i][0]).toLowerCase().trim() === email) {
+      role = String(usersData[i][1]).trim();
+      break;
+    }
+  }
+  if (!role) {
+    return { authorized: false, email: email, reason: 'ไม่พบอีเมลนี้ในระบบ' };
+  }
+
+  // Look up role permissions in Auth_Roles sheet
+  const rolesSheet = ss.getSheetByName(SHEET_AUTH_ROLES);
+  if (!rolesSheet || rolesSheet.getLastRow() <= 1) {
+    return { authorized: false };
+  }
+  const rolesHeaders = rolesSheet.getRange(1, 1, 1, rolesSheet.getLastColumn()).getValues()[0];
+  const rolesData = rolesSheet.getRange(2, 1, rolesSheet.getLastRow() - 1, rolesSheet.getLastColumn()).getValues();
+
+  let permissions = {};
+  AUTH_PAGES.forEach(function(p) { permissions[p] = false; });
+
+  for (let i = 0; i < rolesData.length; i++) {
+    if (String(rolesData[i][0]).trim() === role) {
+      for (let j = 1; j < rolesHeaders.length; j++) {
+        const pageKey = String(rolesHeaders[j]).trim().toLowerCase();
+        if (permissions.hasOwnProperty(pageKey)) {
+          permissions[pageKey] = rolesData[i][j] === true || String(rolesData[i][j]).toUpperCase() === 'TRUE';
+        }
+      }
+      break;
+    }
+  }
+
+  // Admin always has access to user management (even if column missing from sheet)
+  if (role === 'Admin') {
+    permissions.users = true;
+  }
+
+  return { authorized: true, email: email, role: role, permissions: permissions };
+}
+
+function checkPermission_(pageId) {
+  const auth = getUserAuth();
+  if (!auth.authorized) {
+    throw new Error('ไม่มีสิทธิ์เข้าถึง');
+  }
+  if (!auth.permissions[pageId]) {
+    throw new Error('ไม่มีสิทธิ์เข้าถึงหน้า ' + pageId);
+  }
+  return auth;
+}
+
+// ==========================================
+// User Management (Admin only)
+// ==========================================
+function getAuthUsers() {
+  checkPermission_('users');
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_AUTH_USERS);
+  if (!sheet || sheet.getLastRow() <= 1) return [];
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues();
+  return data.map(function(row) {
+    return { email: String(row[0]).trim(), role: String(row[1]).trim() };
+  });
+}
+
+function getAuthRoles() {
+  checkPermission_('users');
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_AUTH_ROLES);
+  if (!sheet || sheet.getLastRow() <= 1) return [];
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
+  return data.map(function(row) { return String(row[0]).trim(); });
+}
+
+function saveAuthUser(email, role) {
+  checkPermission_('users');
+  email = (email || '').toLowerCase().trim();
+  role = (role || '').trim();
+  if (!email) return { success: false, error: 'กรุณากรอกอีเมล' };
+  if (!role) return { success: false, error: 'กรุณาเลือก Role' };
+
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_AUTH_USERS);
+  if (!sheet) return { success: false, error: 'ไม่พบตาราง Auth_Users' };
+
+  // Check if email already exists — update role
+  if (sheet.getLastRow() > 1) {
+    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues();
+    for (let i = 0; i < data.length; i++) {
+      if (String(data[i][0]).toLowerCase().trim() === email) {
+        sheet.getRange(i + 2, 2).setValue(role);
+        // Clear cache for this user
+        return { success: true, message: 'อัพเดท Role ของ ' + email + ' เป็น ' + role };
+      }
+    }
+  }
+
+  // New user
+  sheet.appendRow([email, role]);
+  return { success: true, message: 'เพิ่มผู้ใช้ ' + email + ' เป็น ' + role };
+}
+
+function deleteAuthUser(email) {
+  checkPermission_('users');
+  email = (email || '').toLowerCase().trim();
+  if (!email) return { success: false, error: 'กรุณาระบุอีเมล' };
+
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_AUTH_USERS);
+  if (!sheet || sheet.getLastRow() <= 1) return { success: false, error: 'ไม่พบข้อมูล' };
+
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
+  for (let i = 0; i < data.length; i++) {
+    if (String(data[i][0]).toLowerCase().trim() === email) {
+      sheet.deleteRow(i + 2);
+      return { success: true, message: 'ลบผู้ใช้ ' + email + ' สำเร็จ' };
+    }
+  }
+  return { success: false, error: 'ไม่พบอีเมลนี้' };
 }
 
 // ==========================================
@@ -159,6 +323,24 @@ function setupSheets() {
   if (hmSheet.getLastColumn() !== HM_HEADERS.length) {
     hmSheet.getRange(1, 1, 1, HM_HEADERS.length).setValues([HM_HEADERS]);
     hmSheet.getRange(1, 1, 1, HM_HEADERS.length).setFontWeight('bold');
+  }
+
+  // Auth_Users sheet
+  const authUsersHeaders = ['Email', 'Role'];
+  const authUsersSheet = getOrCreateSheet(SHEET_AUTH_USERS, authUsersHeaders);
+  authUsersSheet.getRange(1, 1, 1, authUsersHeaders.length).setFontWeight('bold');
+  authUsersSheet.setColumnWidth(1, 300);
+  authUsersSheet.setColumnWidth(2, 150);
+
+  // Auth_Roles sheet with default rows
+  const authRolesHeaders = ['Role', 'dashboard', 'counseling', 'count', 'hm', 'report', 'users'];
+  const authRolesSheet = getOrCreateSheet(SHEET_AUTH_ROLES, authRolesHeaders);
+  authRolesSheet.getRange(1, 1, 1, authRolesHeaders.length).setFontWeight('bold');
+  // Only populate default rows if sheet is empty (just headers)
+  if (authRolesSheet.getLastRow() <= 1) {
+    authRolesSheet.appendRow(['Admin', true, true, true, true, true, true]);
+    authRolesSheet.appendRow(['Editor', true, true, true, true, true, false]);
+    authRolesSheet.appendRow(['Viewer', true, false, false, false, true, false]);
   }
 
   // Report Summary
@@ -687,6 +869,7 @@ function setupFiscalYearSummary() {
 // Get field config (for client)
 // ==========================================
 function getCounselingFieldConfig() {
+  checkPermission_('counseling');
   return COUNSELING_FIELDS;
 }
 
@@ -694,6 +877,7 @@ function getCounselingFieldConfig() {
 // Submit Counseling Data
 // ==========================================
 function submitCounselingData(formData) {
+  checkPermission_('counseling');
   if (!formData.an || !/^\d{9}$/.test(formData.an)) {
     return { success: false, error: 'AN ต้องเป็นตัวเลข 9 หลัก' };
   }
@@ -745,6 +929,7 @@ function submitCounselingData(formData) {
 // Submit DC Data (upsert by date)
 // ==========================================
 function submitDCData(formData) {
+  checkPermission_('count');
   if (!formData.dischargeDate) {
     return { success: false, error: 'กรุณาเลือกวันที่' };
   }
@@ -774,6 +959,7 @@ function submitDCData(formData) {
 // Submit PE Data (upsert by date)
 // ==========================================
 function submitPEData(formData) {
+  checkPermission_('count');
   if (!formData.errorDate) {
     return { success: false, error: 'กรุณาเลือกวันที่' };
   }
@@ -802,6 +988,7 @@ function submitPEData(formData) {
 // Submit HM Time Data (upsert by AN + date)
 // ==========================================
 function submitHMData(formData) {
+  checkPermission_('hm');
   if (!formData.an || !/^\d{9}$/.test(formData.an)) {
     return { success: false, error: 'AN ต้องเป็นตัวเลข 9 หลัก' };
   }
@@ -880,6 +1067,7 @@ function submitHMData(formData) {
 // Pre-check functions for DC/PE duplicate confirmation
 // ==========================================
 function checkExistingDC(dischargeDate) {
+  checkPermission_('count');
   const sheet = getSpreadsheet().getSheetByName(SHEET_DC);
   if (!sheet || sheet.getLastRow() <= 1) return { exists: false };
   const data = sheet.getDataRange().getValues();
@@ -893,6 +1081,7 @@ function checkExistingDC(dischargeDate) {
 }
 
 function checkExistingPE(errorDate) {
+  checkPermission_('count');
   const sheet = getSpreadsheet().getSheetByName(SHEET_PE);
   if (!sheet || sheet.getLastRow() <= 1) return { exists: false };
   const data = sheet.getDataRange().getValues();
@@ -909,6 +1098,11 @@ function checkExistingPE(errorDate) {
 // Dashboard Data Functions
 // ==========================================
 function getAvailableMonths() {
+  // Needed by both Dashboard and Report pages
+  const auth = getUserAuth();
+  if (!auth.authorized || (!auth.permissions.dashboard && !auth.permissions.report)) {
+    throw new Error('ไม่มีสิทธิ์เข้าถึง');
+  }
   const ss = getSpreadsheet();
   const months = new Set();
 
@@ -963,12 +1157,14 @@ function getCounselingSummaryByMonth(yearMonth) {
 
   // Step 1: Filter rows for the month and deduplicate by (date+AN) keeping latest timestamp
   const dedupMap = {}; // key: "dateStr|AN" -> { rowIdx, timestamp }
+  let totalRecords = 0; // total rows in the month (before dedup)
   for (let i = 1; i < data.length; i++) {
     const rowDate = data[i][1];
     if (!rowDate) continue;
     const rowYM = Utilities.formatDate(new Date(rowDate), tz, 'yyyy-MM');
     if (rowYM !== yearMonth) continue;
 
+    totalRecords++;
     const dateStr = new Date(rowDate).toDateString();
     const an = String(data[i][2]);
     const key = dateStr + '|' + an;
@@ -995,7 +1191,12 @@ function getCounselingSummaryByMonth(yearMonth) {
   });
 
   const dedupKeys = Object.keys(dedupMap);
-  const totalUniquePatients = dedupKeys.length;
+
+  // totalSessions = total records (rows) in the month from Counseling_Raw
+  // totalUniquePatients = distinct AN values in the month
+  const uniqueANs = new Set();
+  dedupKeys.forEach(function(key) { uniqueANs.add(key.split('|')[1]); });
+  const totalUniquePatients = uniqueANs.size;
 
   dedupKeys.forEach(key => {
     const i = dedupMap[key].rowIdx;
@@ -1040,7 +1241,7 @@ function getCounselingSummaryByMonth(yearMonth) {
 
   scarsPatientRows.sort(function(a, b) { return a.date.localeCompare(b.date); });
 
-  return { totalSessions: dedupKeys.length, totalUniquePatients, topLevelCounts, detailedItems, allItemCounts, scarsItems, scarsPatientRows };
+  return { totalSessions: totalRecords, totalUniquePatients: totalUniquePatients, topLevelCounts: topLevelCounts, detailedItems: detailedItems, allItemCounts: allItemCounts, scarsItems: scarsItems, scarsPatientRows: scarsPatientRows };
 }
 
 function getDCDataByMonth(yearMonth) {
@@ -1090,6 +1291,7 @@ function getPEDataLast6Months() {
 }
 
 function getDashboardData(yearMonth) {
+  checkPermission_('dashboard');
   return {
     counseling: getCounselingSummaryByMonth(yearMonth),
     dc: getDCDataByMonth(yearMonth),
@@ -1103,6 +1305,7 @@ function getDashboardData(yearMonth) {
 // Report Summary Page Data
 // ==========================================
 function getReportSummaryData(yearMonth) {
+  checkPermission_('report');
   const counseling = getCounselingSummaryByMonth(yearMonth);
   const dc = getDCDataByMonth(yearMonth);
   const tz = Session.getScriptTimeZone();

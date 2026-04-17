@@ -1,0 +1,74 @@
+<div class="page-header">
+  <h1><i class="fa-solid fa-calculator"></i> Count Forms</h1>
+  <p>บันทึกจำนวน Discharge และ Prescribing Error รายวัน</p>
+</div>
+
+<!-- Discharge Count collapsible card -->
+<div class="collapse-card open" id="dc-collapse">
+  <div class="collapse-header" onclick="toggleCollapse('dc-collapse')">
+    <div class="collapse-header-left">
+      <i class="fa-solid fa-bed"></i>
+      <div>
+        <div class="collapse-title">Discharge Count</div>
+        <div class="collapse-desc">บันทึกจำนวนผู้ป่วยที่ Discharge ในแต่ละวัน</div>
+      </div>
+    </div>
+    <i class="fa-solid fa-chevron-down collapse-chevron"></i>
+  </div>
+  <div class="collapse-body">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="required">วัน/เดือน/ปีที่ Discharge</label>
+        <input type="date" id="dc-date" class="form-input">
+      </div>
+      <div class="form-group">
+        <label class="required">จำนวนผู้ป่วยที่ Discharge</label>
+        <input type="number" id="dc-count" class="form-input" min="0" step="1" inputmode="numeric" placeholder="จำนวนผู้ป่วย">
+        <div id="dc-error" class="error-message">กรุณากรอกจำนวนที่ถูกต้อง</div>
+      </div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="submitDCForm()">
+        <i class="fa-solid fa-paper-plane"></i> บันทึกข้อมูล
+      </button>
+      <button class="btn btn-secondary" onclick="resetDCForm()">
+        <i class="fa-solid fa-rotate-left"></i> ล้างข้อมูล
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- PE Count collapsible card -->
+<div class="collapse-card open" id="pe-collapse">
+  <div class="collapse-header" onclick="toggleCollapse('pe-collapse')">
+    <div class="collapse-header-left">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      <div>
+        <div class="collapse-title">Prescribing Error Count</div>
+        <div class="collapse-desc">บันทึกจำนวน Prescribing Error ในแต่ละวัน</div>
+      </div>
+    </div>
+    <i class="fa-solid fa-chevron-down collapse-chevron"></i>
+  </div>
+  <div class="collapse-body">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="required">วัน/เดือน/ปีที่เกิด Error</label>
+        <input type="date" id="pe-date" class="form-input">
+      </div>
+      <div class="form-group">
+        <label class="required">จำนวน Error ต่อวัน</label>
+        <input type="number" id="pe-count" class="form-input" min="0" step="1" inputmode="numeric" placeholder="จำนวน Error">
+        <div id="pe-error" class="error-message">กรุณากรอกจำนวนที่ถูกต้อง</div>
+      </div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="submitPEForm()">
+        <i class="fa-solid fa-paper-plane"></i> บันทึกข้อมูล
+      </button>
+      <button class="btn btn-secondary" onclick="resetPEForm()">
+        <i class="fa-solid fa-rotate-left"></i> ล้างข้อมูล
+      </button>
+    </div>
+  </div>
+</div>

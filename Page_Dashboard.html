@@ -20,6 +20,10 @@
     <div class="stat-label">จำนวนผู้ป่วยที่ได้รับการทำ Counseling ทั้งหมด (ราย)</div>
   </div>
   <div class="stat-card">
+    <div class="stat-value" id="stat-dc-sessions">-</div>
+    <div class="stat-label">จำนวน Discharge Counseling (ครั้ง)</div>
+  </div>
+  <div class="stat-card">
     <div class="stat-value" id="stat-discharge">-</div>
     <div class="stat-label">จำนวนผู้ป่วยที่ถูกจำหน่ายทั้งหมด (ราย)</div>
   </div>
@@ -142,33 +146,30 @@
   </div>
 </div>
 
-<!-- Bottom Grid (SCARs detail + future charts) -->
-<div class="dashboard-grid" style="margin-top: 20px;">
-  <!-- SCARs Patient Detail Table -->
-  <div class="card">
-    <div class="card-header" style="display:flex; align-items:center; gap:8px;">
-      <i class="fa-solid fa-list-ul" style="color: var(--honey);"></i>
-      <span>รายชื่อผู้ป่วยที่ได้รับยาที่มีความเสี่ยงต่อการเกิด SCARs</span>
-      <button class="btn btn-secondary btn-sm" id="btn-download-scars"
-              onclick="downloadSCARsXLSX()"
-              style="margin-left:auto;" disabled>
-        <i class="fa-solid fa-file-excel"></i> ดาวน์โหลด XLSX
-      </button>
-    </div>
-    <div style="overflow-x: auto;">
-      <table class="summary-table" id="scars-detail-table">
-        <thead>
-          <tr>
-            <th style="width:130px;">วันที่</th>
-            <th style="width:130px;">AN</th>
-            <th>ชื่อยา</th>
-          </tr>
-        </thead>
-        <tbody id="scars-detail-tbody">
-          <tr><td colspan="3" style="text-align:center; color:var(--text-light);">กรุณาเลือกเดือน</td></tr>
-        </tbody>
-      </table>
-    </div>
+<!-- SCARs Patient Detail Table -->
+<div class="card" style="margin-top: 20px;">
+  <div class="card-header" style="display:flex; align-items:center; gap:8px;">
+    <i class="fa-solid fa-list-ul" style="color: var(--honey);"></i>
+    <span>รายชื่อผู้ป่วยที่ได้รับยาที่มีความเสี่ยงต่อการเกิด SCARs</span>
+    <button class="btn btn-secondary btn-sm" id="btn-download-scars"
+            onclick="downloadSCARsXLSX()"
+            style="margin-left:auto;" disabled>
+      <i class="fa-solid fa-file-excel"></i> ดาวน์โหลด XLSX
+    </button>
+  </div>
+  <div style="overflow-x: auto;">
+    <table class="summary-table" id="scars-detail-table">
+      <thead>
+        <tr>
+          <th style="width:130px;">วันที่</th>
+          <th style="width:130px;">AN</th>
+          <th style="text-align:left;">ชื่อยา</th>
+        </tr>
+      </thead>
+      <tbody id="scars-detail-tbody">
+        <tr><td colspan="3" style="text-align:center; color:var(--text-light);">กรุณาเลือกเดือน</td></tr>
+      </tbody>
+    </table>
   </div>
 </div>
 

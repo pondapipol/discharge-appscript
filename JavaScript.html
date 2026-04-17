@@ -36,8 +36,58 @@ const COLORS = {
 // Initialization
 // ==========================================
 document.addEventListener('DOMContentLoaded', function() {
+  // Auth check
+  if (!USER_AUTH || !USER_AUTH.authorized) {
+    document.getElementById('unauthorized-page').style.display = '';
+    document.getElementById('app-layout').style.display = 'none';
+    var detailEl = document.getElementById('unauthorized-detail');
+    if (detailEl && USER_AUTH) {
+      var info = '';
+      if (USER_AUTH.email) info += 'อีเมล: ' + USER_AUTH.email;
+      if (USER_AUTH.reason) info += (info ? '<br>' : '') + 'สาเหตุ: ' + USER_AUTH.reason;
+      if (!info) info = 'ไม่สามารถระบุอีเมลผู้ใช้ได้';
+      detailEl.innerHTML = info;
+    }
+    return;
+  }
+
+  // Show app layout
+  document.getElementById('app-layout').style.display = '';
+
+  // Populate top bar user info
+  var emailEl = document.getElementById('top-bar-email');
+  var roleEl = document.getElementById('top-bar-role');
+  if (emailEl) emailEl.textContent = USER_AUTH.email;
+  if (roleEl) {
+    roleEl.textContent = USER_AUTH.role;
+    var roleClass = 'role-' + USER_AUTH.role.toLowerCase();
+    roleEl.classList.add(roleClass);
+  }
+
+  // Hide nav items and pages based on permissions
+  var permissions = USER_AUTH.permissions;
+  var pages = ['dashboard', 'counseling', 'count', 'hm', 'report', 'users'];
+  var firstVisiblePage = null;
+  pages.forEach(function(pageId) {
+    if (!permissions[pageId]) {
+      var navItem = document.querySelector('.nav-item[data-page="' + pageId + '"]');
+      if (navItem) navItem.style.display = 'none';
+      var pageEl = document.getElementById('page-' + pageId);
+      if (pageEl) pageEl.classList.remove('active');
+    } else if (!firstVisiblePage) {
+      firstVisiblePage = pageId;
+    }
+  });
+
+  // Ensure a visible page is active
+  if (firstVisiblePage) {
+    switchPage(firstVisiblePage);
+  }
+
   initForms();
-  loadDashboard();
+  if (permissions.dashboard) {
+    loadDashboard();
+  }
 });
 
 function initForms() {
@@ -91,6 +141,17 @@ function switchPage(pageId) {
   if (pageId === 'report' && !document.getElementById('report-month').value) {
     loadReportSummary();
   }
+  if (pageId === 'users' && !usersLoaded) {
+    loadUsers();
+  }
+}
+
+// ==========================================
+// Collapsible Card Toggle
+// ==========================================
+function toggleCollapse(cardId) {
+  var card = document.getElementById(cardId);
+  card.classList.toggle('open');
 }
 
 // ==========================================
@@ -602,8 +663,14 @@ function renderDashboard(data, yearMonth) {
   var peMonth = data.pe.find(function(p) { return p.month === yearMonth; });
   var peTotal = peMonth ? peMonth.totalErrors : 0;
 
+  // Compute grand total (same as summary table รวมทั้งหมด)
+  var categories = ['5.1', '5.2', '5.3', '5.4', '5.5', '5.6', '5.7', '5.8'];
+  var grandTotal = 0;
+  categories.forEach(function(cat) { grandTotal += getCategoryCount(counseling, cat); });
+
   // Stat cards
   document.getElementById('stat-counseling').textContent = counseling.totalUniquePatients;
+  document.getElementById('stat-dc-sessions').textContent = grandTotal;
   document.getElementById('stat-discharge').textContent = dcTotal;
   document.getElementById('stat-pe').textContent = peTotal;
 
@@ -1174,6 +1241,113 @@ function showLoading() {
 
 function hideLoading() {
   document.getElementById('loading-overlay').classList.add('hidden');
+}
+
+// ==========================================
+// User Management
+// ==========================================
+var usersLoaded = false;
+
+function loadUsers() {
+  var tbody = document.getElementById('users-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--text-light);">กำลังโหลด...</td></tr>';
+
+  google.script.run
+    .withSuccessHandler(function(roles) {
+      var select = document.getElementById('user-role');
+      select.innerHTML = '<option value="">-- เลือก Role --</option>';
+      roles.forEach(function(r) {
+        var opt = document.createElement('option');
+        opt.value = r;
+        opt.textContent = r;
+        select.appendChild(opt);
+      });
+    })
+    .getAuthRoles();
+
+  google.script.run
+    .withSuccessHandler(function(users) {
+      usersLoaded = true;
+      var tbody = document.getElementById('users-table-body');
+      if (!users || users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--text-light);">ยังไม่มีผู้ใช้งาน</td></tr>';
+        return;
+      }
+      var html = '';
+      users.forEach(function(u) {
+        var roleBadgeClass = 'role-' + u.role.toLowerCase();
+        html += '<tr>'
+          + '<td>' + escapeHtml(u.email) + '</td>'
+          + '<td><span class="role-badge ' + roleBadgeClass + '">' + escapeHtml(u.role) + '</span></td>'
+          + '<td style="text-align:center;">'
+          + '<button class="btn btn-secondary btn-sm" onclick="editUser(\'' + escapeHtml(u.email) + '\',\'' + escapeHtml(u.role) + '\')" title="แก้ไข"><i class="fa-solid fa-pen"></i></button> '
+          + '<button class="btn btn-sm" style="background:#FEE2E2;color:#EF4444;" onclick="deleteUser(\'' + escapeHtml(u.email) + '\')" title="ลบ"><i class="fa-solid fa-trash"></i></button>'
+          + '</td></tr>';
+      });
+      tbody.innerHTML = html;
+    })
+    .withFailureHandler(function(err) {
+      var tbody = document.getElementById('users-table-body');
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#EF4444;">โหลดข้อมูลไม่สำเร็จ: ' + err.message + '</td></tr>';
+    })
+    .getAuthUsers();
+}
+
+function editUser(email, role) {
+  document.getElementById('user-email').value = email;
+  document.getElementById('user-role').value = role;
+}
+
+function saveUser() {
+  var email = document.getElementById('user-email').value.trim();
+  var role = document.getElementById('user-role').value;
+  if (!email) { showToast('กรุณากรอกอีเมล', 'error'); return; }
+  if (!role) { showToast('กรุณาเลือก Role', 'error'); return; }
+
+  showLoading();
+  google.script.run
+    .withSuccessHandler(function(result) {
+      hideLoading();
+      if (result.success) {
+        showToast(result.message, 'success');
+        clearUserForm();
+        loadUsers();
+      } else {
+        showToast(result.error, 'error');
+      }
+    })
+    .withFailureHandler(function(err) {
+      hideLoading();
+      showToast('เกิดข้อผิดพลาด: ' + err.message, 'error');
+    })
+    .saveAuthUser(email, role);
+}
+
+function deleteUser(email) {
+  if (!confirm('ต้องการลบผู้ใช้ ' + email + ' หรือไม่?')) return;
+
+  showLoading();
+  google.script.run
+    .withSuccessHandler(function(result) {
+      hideLoading();
+      if (result.success) {
+        showToast(result.message, 'success');
+        loadUsers();
+      } else {
+        showToast(result.error, 'error');
+      }
+    })
+    .withFailureHandler(function(err) {
+      hideLoading();
+      showToast('เกิดข้อผิดพลาด: ' + err.message, 'error');
+    })
+    .deleteAuthUser(email);
+}
+
+function clearUserForm() {
+  document.getElementById('user-email').value = '';
+  document.getElementById('user-role').value = '';
 }
 
 function showToast(message, type) {
