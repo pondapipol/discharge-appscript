@@ -3,7 +3,100 @@
   <p>สรุปข้อมูลรายเดือน</p>
 </div>
 
-<!-- Month Selector -->
+<!-- Tab bar -->
+<div class="report-tabs">
+  <button class="tab-btn active" data-tab="hm" onclick="switchReportTab('hm')">
+    <i class="fa-solid fa-stopwatch"></i> รายงานกระบวนการยากลับบ้าน (HM Time)
+  </button>
+  <button class="tab-btn" data-tab="legacy" onclick="switchReportTab('legacy')">
+    <i class="fa-solid fa-table-list"></i> รายงานเดิม (Counseling Summary)
+  </button>
+</div>
+
+<!-- ========== HM Time Report Tab ========== -->
+<div id="report-tab-hm" class="report-tab active">
+  <div class="month-selector" style="display:flex; align-items:center; gap:12px;">
+    <label><i class="fa-solid fa-calendar"></i> เลือกเดือน:</label>
+    <select id="report-month-hm" onchange="onHMMonthChange()">
+      <option value="">-- กรุณาเลือกเดือน --</option>
+    </select>
+    <button class="btn btn-secondary btn-sm" id="btn-download-report-hm"
+            onclick="downloadHMTimeReportXLSX()"
+            style="margin-left:auto;" disabled>
+      <i class="fa-solid fa-file-excel"></i> ดาวน์โหลด XLSX
+    </button>
+  </div>
+
+  <div class="hm-info-bar">
+    <div class="hm-info-item">
+      <span class="hm-info-label">ประจำเดือน</span>
+      <span class="hm-info-value" id="hmrpt-month-label">-</span>
+    </div>
+    <div class="hm-info-item">
+      <span class="hm-info-label">จำนวนวัน</span>
+      <span class="hm-info-value" id="hmrpt-day-count">-</span>
+    </div>
+  </div>
+
+  <div class="card full-width">
+    <div style="overflow-x: auto;">
+      <table class="report-table" id="hm-report-table">
+        <thead>
+          <tr>
+            <th class="col-detail">รายละเอียด</th>
+            <th class="col-count">ระยะเวลาเฉลี่ย (นาที)</th>
+            <th class="col-count">ระยะเวลาเฉลี่ย/ขนานยา (นาที/ขนานยา)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="item-row">
+            <td>01 กระบวนการ - ก่อนตรวจสอบรายการยากลับบ้าน [Ward รับคำสั่ง - เริ่มตรวจสอบ]</td>
+            <td id="hmrpt-step01">-</td>
+            <td></td>
+          </tr>
+          <tr class="item-row">
+            <td>02 กระบวนการ - คัดกรองคำสั่งใช้ยากลับบ้าน</td>
+            <td id="hmrpt-step02">-</td>
+            <td id="hmrpt-step02-per-drug">-</td>
+          </tr>
+          <tr class="item-row">
+            <td>03 กระบวนการ - จัดยา</td>
+            <td id="hmrpt-step03">-</td>
+            <td id="hmrpt-step03-per-drug">-</td>
+          </tr>
+          <tr class="item-row">
+            <td>04 กระบวนการ - ตรวจสอบความถูกต้องของรายการยากลับบ้าน</td>
+            <td id="hmrpt-step04">-</td>
+            <td id="hmrpt-step04-per-drug">-</td>
+          </tr>
+          <tr class="item-row">
+            <td>05 กระบวนการ - จ่ายยากลับบ้าน</td>
+            <td id="hmrpt-step05">-</td>
+            <td></td>
+          </tr>
+          <tr class="summary-highlight">
+            <td><strong>รวมกระบวนการยากลับบ้าน ห้องยาผู้ป่วยใน ทั้งหมด</strong></td>
+            <td><strong id="hmrpt-sum">-</strong></td>
+            <td></td>
+          </tr>
+          <tr class="section-header-row hm-drug-avg-row">
+            <td><strong>จำนวนขนานยากลับบ้านเฉลี่ย</strong></td>
+            <td><strong id="hmrpt-avg-drug-count">-</strong></td>
+            <td></td>
+          </tr>
+          <tr class="item-row">
+            <td>กระบวนการ - ส่ง Chart และ คืนยา</td>
+            <td id="hmrpt-step09">-</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Legacy Counseling Report Tab ========== -->
+<div id="report-tab-legacy" class="report-tab" style="display:none;">
 <div class="month-selector" style="display:flex; align-items:center; gap:12px;">
   <label><i class="fa-solid fa-calendar"></i> เลือกเดือน:</label>
   <select id="report-month" onchange="onReportMonthChange()">
@@ -152,4 +245,5 @@
       </tfoot>
     </table>
   </div>
+</div>
 </div>

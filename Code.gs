@@ -1334,3 +1334,135 @@ function getReportSummaryData(yearMonth) {
     pePercentage: pePercentage
   };
 }
+
+// ==========================================
+// HM Time Report Data
+// ==========================================
+function timeValueToMinutes_(v) {
+  if (v === '' || v === null || v === undefined) return null;
+  if (v instanceof Date) {
+    return v.getHours() * 60 + v.getMinutes() + v.getSeconds() / 60;
+  }
+  const s = String(v).trim();
+  if (!s) return null;
+  const m = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (!m) return null;
+  const h = parseInt(m[1], 10);
+  const mm = parseInt(m[2], 10);
+  const ss = m[3] ? parseInt(m[3], 10) : 0;
+  if (isNaN(h) || isNaN(mm)) return null;
+  return h * 60 + mm + ss / 60;
+}
+
+function timeDiffMin_(startVal, endVal) {
+  const a = timeValueToMinutes_(startVal);
+  const b = timeValueToMinutes_(endVal);
+  if (a === null || b === null) return null;
+  const d = b - a;
+  if (d < 0) return null;
+  return d;
+}
+
+function getHMTimeReportByMonth(yearMonth) {
+  checkPermission_('report');
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_HM);
+  const tz = Session.getScriptTimeZone();
+
+  const empty = {
+    yearMonth: yearMonth,
+    dayCount: 0,
+    durationsMin: { step01: null, step02: null, step03: null, step04: null, step05: null, sumSteps: null, step09: null },
+    avgDrugCount: null,
+    perDrugMin: { step02: null, step03: null, step04: null },
+    rowCount: 0,
+    rowsUsedPerMetric: { step01: 0, step02: 0, step03: 0, step04: 0, step05: 0, step09: 0, drugCount: 0 }
+  };
+
+  if (!sheet || sheet.getLastRow() <= 1) return empty;
+
+  const data = sheet.getDataRange().getValues();
+  const H = HM_HEADERS;
+  const col = {};
+  H.forEach(function(name, idx) { col[name] = idx; });
+
+  const distinctDates = new Set();
+  const sums = { step01: 0, step02: 0, step03: 0, step04: 0, step05: 0, step09: 0, drugCount: 0 };
+  const counts = { step01: 0, step02: 0, step03: 0, step04: 0, step05: 0, step09: 0, drugCount: 0 };
+  let rowsInMonth = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const recvDate = row[col['Step02_NurseReceiveDate']];
+    if (!recvDate) continue;
+    const d = recvDate instanceof Date ? recvDate : new Date(recvDate);
+    if (isNaN(d.getTime())) continue;
+    const ym = Utilities.formatDate(d, tz, 'yyyy-MM');
+    if (ym !== yearMonth) continue;
+
+    rowsInMonth++;
+    distinctDates.add(Utilities.formatDate(d, tz, 'yyyy-MM-dd'));
+
+    const dc = row[col['DrugCount']];
+    if (typeof dc === 'number' && !isNaN(dc)) {
+      sums.drugCount += dc;
+      counts.drugCount++;
+    } else if (dc !== '' && dc !== null && dc !== undefined) {
+      const n = parseFloat(dc);
+      if (!isNaN(n)) { sums.drugCount += n; counts.drugCount++; }
+    }
+
+    const s01 = timeDiffMin_(row[col['Step02_NurseReceiveTime']], row[col['Step03_PharmCheckHMStart']]);
+    if (s01 !== null) { sums.step01 += s01; counts.step01++; }
+
+    const verifySpan = timeDiffMin_(row[col['Step03_PharmCheckHMStart']], row[col['Step06_PharmVerifyTime']]);
+    if (verifySpan !== null) {
+      const consultEdit = timeDiffMin_(row[col['Step04_PharmConsultStart']], row[col['Step05_PharmEditEnd']]);
+      const pause = consultEdit !== null ? consultEdit : 0;
+      sums.step02 += verifySpan - pause;
+      counts.step02++;
+    }
+
+    const s03 = timeDiffMin_(row[col['Step07_DispenseStart']], row[col['Step07_DispenseEnd']]);
+    if (s03 !== null) { sums.step03 += s03; counts.step03++; }
+
+    const s04 = timeDiffMin_(row[col['Step08_PharmCheckStart']], row[col['Step08_PharmCheckEnd']]);
+    if (s04 !== null) { sums.step04 += s04; counts.step04++; }
+
+    const s05 = timeDiffMin_(row[col['Step10_PharmCheck2Start']], row[col['Step10_PharmCheck2End']]);
+    if (s05 !== null) { sums.step05 += s05; counts.step05++; }
+
+    const s09 = timeDiffMin_(row[col['Step02_NurseReceiveTime']], row[col['Step09_WardChartTime']]);
+    if (s09 !== null) { sums.step09 += s09; counts.step09++; }
+  }
+
+  function avg(key) { return counts[key] > 0 ? sums[key] / counts[key] : null; }
+
+  const step01 = avg('step01');
+  const step02 = avg('step02');
+  const step03 = avg('step03');
+  const step04 = avg('step04');
+  const step05 = avg('step05');
+  const step09 = avg('step09');
+  const avgDrugCount = avg('drugCount');
+
+  const stepVals = [step01, step02, step03, step04, step05];
+  const sumSteps = stepVals.every(function(v) { return v !== null; })
+    ? stepVals.reduce(function(a, b) { return a + b; }, 0)
+    : null;
+
+  function perDrug(v) {
+    if (v === null || avgDrugCount === null || avgDrugCount === 0) return null;
+    return v / avgDrugCount;
+  }
+
+  return {
+    yearMonth: yearMonth,
+    dayCount: distinctDates.size,
+    durationsMin: { step01: step01, step02: step02, step03: step03, step04: step04, step05: step05, sumSteps: sumSteps, step09: step09 },
+    avgDrugCount: avgDrugCount,
+    perDrugMin: { step02: perDrug(step02), step03: perDrug(step03), step04: perDrug(step04) },
+    rowCount: rowsInMonth,
+    rowsUsedPerMetric: counts
+  };
+}

@@ -726,6 +726,83 @@
     max-width: 100%;
   }
 
+  .report-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 4px;
+    background: #fff;
+    border: 1px solid #e3e6f5;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    width: fit-content;
+  }
+
+  .report-tabs .tab-btn {
+    background: #fff;
+    border: none;
+    padding: 8px 16px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    color: #555;
+    cursor: pointer;
+    border-radius: 7px;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .report-tabs .tab-btn:hover:not(.active) {
+    background: #f3f4ff;
+    color: #222;
+  }
+
+  .report-tabs .tab-btn.active {
+    background: #FEB737;
+    color: #fff;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  }
+
+  .report-tabs .tab-btn i {
+    margin-right: 6px;
+  }
+
+  .report-tab {
+    display: none;
+  }
+
+  .report-tab.active {
+    display: block;
+  }
+
+  .hm-info-bar {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    background: #fff;
+    border: 1px solid #e3e6f5;
+    border-left: 4px solid #7BB8C0;
+    border-radius: 8px;
+    padding: 12px 18px;
+    margin: 12px 0;
+  }
+
+  .hm-info-item {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .hm-info-label {
+    color: #666;
+    font-size: 14px;
+  }
+
+  .hm-info-value {
+    font-weight: 600;
+    font-size: 16px;
+    color: #222;
+  }
+
   .month-selector {
     display: flex;
     align-items: center;
@@ -1078,6 +1155,23 @@
 
   .report-table tfoot .summary-highlight td {
     background: var(--honey-light);
+  }
+
+  .report-table tbody .summary-highlight td {
+    background: #FEB737;
+    color: #fff;
+    font-weight: 600;
+  }
+
+  .report-table tbody .summary-highlight td strong {
+    color: #fff;
+  }
+
+  .report-table tbody .hm-drug-avg-row td,
+  .report-table tbody .hm-drug-avg-row td strong {
+    background: var(--sea-breeze);
+    color: #fff;
+    font-weight: 700;
   }
 
   .report-table tfoot .summary-row td {
