@@ -36,6 +36,14 @@
       <span class="hm-info-label">จำนวนวัน</span>
       <span class="hm-info-value" id="hmrpt-day-count">-</span>
     </div>
+    <div class="hm-info-item">
+      <span class="hm-info-label">จำนวนผู้ป่วยที่เก็บข้อมูล</span>
+      <span class="hm-info-value" id="hmrpt-row-count">-</span>
+    </div>
+    <div class="hm-info-item">
+      <span class="hm-info-label">จำนวนขนานยากลับบ้านเฉลี่ย</span>
+      <span class="hm-info-value" id="hmrpt-avg-drug-count">-</span>
+    </div>
   </div>
 
   <div class="card full-width">
@@ -44,49 +52,67 @@
         <thead>
           <tr>
             <th class="col-detail">รายละเอียด</th>
+            <th class="col-count">เกณฑ์/เป้าหมาย (นาที)</th>
             <th class="col-count">ระยะเวลาเฉลี่ย (นาที)</th>
-            <th class="col-count">ระยะเวลาเฉลี่ย/ขนานยา (นาที/ขนานยา)</th>
+            <th class="col-count">ระยะเวลาเฉลี่ย/ขนานยา<br>(นาที/ขนานยา)</th>
+            <th class="col-count">สถานะ</th>
           </tr>
         </thead>
         <tbody>
           <tr class="item-row">
             <td>01 กระบวนการ - ก่อนตรวจสอบรายการยากลับบ้าน [Ward รับคำสั่ง - เริ่มตรวจสอบ]</td>
+            <td></td>
             <td id="hmrpt-step01">-</td>
+            <td></td>
             <td></td>
           </tr>
           <tr class="item-row">
             <td>02 กระบวนการ - คัดกรองคำสั่งใช้ยากลับบ้าน</td>
+            <td></td>
             <td id="hmrpt-step02">-</td>
             <td id="hmrpt-step02-per-drug">-</td>
+            <td></td>
           </tr>
           <tr class="item-row">
             <td>03 กระบวนการ - จัดยา</td>
+            <td></td>
             <td id="hmrpt-step03">-</td>
             <td id="hmrpt-step03-per-drug">-</td>
+            <td></td>
           </tr>
           <tr class="item-row">
             <td>04 กระบวนการ - ตรวจสอบความถูกต้องของรายการยากลับบ้าน</td>
+            <td></td>
             <td id="hmrpt-step04">-</td>
             <td id="hmrpt-step04-per-drug">-</td>
+            <td></td>
           </tr>
           <tr class="item-row">
-            <td>05 กระบวนการ - จ่ายยากลับบ้าน</td>
+            <td>05 กระบวนการ - ผู้ป่วยติดต่อรับยา - จ่ายยากลับบ้าน</td>
+            <td></td>
             <td id="hmrpt-step05">-</td>
+            <td id="hmrpt-step05-per-drug">-</td>
             <td></td>
           </tr>
           <tr class="summary-highlight">
-            <td><strong>รวมกระบวนการยากลับบ้าน ห้องยาผู้ป่วยใน ทั้งหมด</strong></td>
+            <td><strong>ระยะเวลากระบวนการยากลับบ้าน [ตั้งแต่คำสั่งใช้ยากลับบ้านแสดงบน Dashboard ถึง เภสัชกรตรวจสอบความถูกต้องของรายการยากลับบ้าน]</strong></td>
+            <td><strong>45</strong></td>
+            <td><strong id="hmrpt-sum1to4">-</strong></td>
+            <td></td>
+            <td id="hmrpt-sum1to4-tag"></td>
+          </tr>
+          <tr class="summary-highlight">
+            <td><strong>ระยะเวลากระบวนการยากลับบ้าน ห้องยาผู้ป่วยใน ทั้งหมด [ตั้งแต่คำสั่งใช้ยากลับบ้านแสดงบน Dashboard ถึง เภสัชกรจ่ายยากลับบ้านให้ผู้ป่วยเสร็จสิ้น]</strong></td>
+            <td></td>
             <td><strong id="hmrpt-sum">-</strong></td>
             <td></td>
-          </tr>
-          <tr class="section-header-row hm-drug-avg-row">
-            <td><strong>จำนวนขนานยากลับบ้านเฉลี่ย</strong></td>
-            <td><strong id="hmrpt-avg-drug-count">-</strong></td>
             <td></td>
           </tr>
           <tr class="item-row">
             <td>กระบวนการ - ส่ง Chart และ คืนยา</td>
+            <td></td>
             <td id="hmrpt-step09">-</td>
+            <td></td>
             <td></td>
           </tr>
         </tbody>

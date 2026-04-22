@@ -1240,17 +1240,35 @@ function renderHMTimeReport(data) {
   };
   setText('hmrpt-month-label', formatThaiMonth(data.yearMonth));
   setText('hmrpt-day-count', (data.dayCount || 0) + ' วัน');
+  setText('hmrpt-row-count', (data.rowCount || 0) + ' ราย');
   setText('hmrpt-step01', fmtMin_(data.durationsMin.step01));
   setText('hmrpt-step02', fmtMin_(data.durationsMin.step02));
   setText('hmrpt-step03', fmtMin_(data.durationsMin.step03));
   setText('hmrpt-step04', fmtMin_(data.durationsMin.step04));
   setText('hmrpt-step05', fmtMin_(data.durationsMin.step05));
+  setText('hmrpt-sum1to4', fmtMin_(data.durationsMin.sumSteps1to4));
   setText('hmrpt-sum', fmtMin_(data.durationsMin.sumSteps));
   setText('hmrpt-step09', fmtMin_(data.durationsMin.step09));
   setText('hmrpt-avg-drug-count', data.avgDrugCount === null ? '-' : Number(data.avgDrugCount).toFixed(2));
   setText('hmrpt-step02-per-drug', fmtMin_(data.perDrugMin.step02));
   setText('hmrpt-step03-per-drug', fmtMin_(data.perDrugMin.step03));
   setText('hmrpt-step04-per-drug', fmtMin_(data.perDrugMin.step04));
+  setText('hmrpt-step05-per-drug', fmtMin_(data.perDrugMin.step05));
+
+  var tag = document.getElementById('hmrpt-sum1to4-tag');
+  if (tag) {
+    var v = data.durationsMin.sumSteps1to4;
+    if (v === null || v === undefined || isNaN(v)) {
+      tag.textContent = '';
+      tag.className = '';
+    } else if (v <= 45) {
+      tag.textContent = 'ผ่านเกณฑ์';
+      tag.className = 'pass-tag';
+    } else {
+      tag.textContent = 'ไม่ผ่านเกณฑ์';
+      tag.className = 'fail-tag';
+    }
+  }
 }
 
 function downloadHMTimeReportXLSX() {
@@ -1264,24 +1282,31 @@ function downloadHMTimeReportXLSX() {
   var wsData = [];
   var monthLabel = (document.getElementById('hmrpt-month-label') || {}).textContent || '';
   var dayCount = (document.getElementById('hmrpt-day-count') || {}).textContent || '';
-  wsData.push(['ประจำเดือน', monthLabel, '']);
-  wsData.push(['จำนวนวัน', dayCount, '']);
-  wsData.push(['', '', '']);
-  wsData.push(['รายละเอียด', 'ระยะเวลาเฉลี่ย (นาที)', 'ระยะเวลาเฉลี่ย/ขนานยา (นาที/ขนานยา)']);
+  var rowCount = (document.getElementById('hmrpt-row-count') || {}).textContent || '';
+  var avgDrug = (document.getElementById('hmrpt-avg-drug-count') || {}).textContent || '';
+  wsData.push(['ประจำเดือน', monthLabel, '', '', '']);
+  wsData.push(['จำนวนวัน', dayCount, '', '', '']);
+  wsData.push(['จำนวนผู้ป่วยที่เก็บข้อมูล', rowCount, '', '', '']);
+  wsData.push(['จำนวนขนานยากลับบ้านเฉลี่ย', avgDrug, '', '', '']);
+  wsData.push(['', '', '', '', '']);
+  wsData.push(['รายละเอียด', 'เกณฑ์/เป้าหมาย (นาที)', 'ระยะเวลาเฉลี่ย (นาที)', 'ระยะเวลาเฉลี่ย/ขนานยา (นาที/ขนานยา)', 'สถานะ']);
   var rows = table.querySelectorAll('tbody tr');
+  var toCell = function(s) {
+    return (s === '' || s === '-' || isNaN(s)) ? s : Number(s);
+  };
   rows.forEach(function(tr) {
     var cells = tr.querySelectorAll('td');
-    if (cells.length >= 3) {
+    if (cells.length >= 5) {
       var detail = cells[0].textContent.trim();
-      var v1 = cells[1].textContent.trim();
-      var v2 = cells[2].textContent.trim();
-      var c1 = (v1 === '' || v1 === '-' || isNaN(v1)) ? v1 : Number(v1);
-      var c2 = (v2 === '' || v2 === '-' || isNaN(v2)) ? v2 : Number(v2);
-      wsData.push([detail, c1, c2]);
+      var target = cells[1].textContent.trim();
+      var avg = cells[2].textContent.trim();
+      var perDrug = cells[3].textContent.trim();
+      var status = cells[4].textContent.trim();
+      wsData.push([detail, toCell(target), toCell(avg), toCell(perDrug), status]);
     }
   });
   var ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [{ wch: 60 }, { wch: 25 }, { wch: 35 }];
+  ws['!cols'] = [{ wch: 60 }, { wch: 20 }, { wch: 25 }, { wch: 35 }, { wch: 20 }];
   var wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'HM_Time_' + yearMonth);
   XLSX.writeFile(wb, 'HM_Time_Report_' + yearMonth + '.xlsx');

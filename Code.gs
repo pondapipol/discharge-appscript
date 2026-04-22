@@ -6,6 +6,7 @@ const SHEET_DC = 'DC_Raw';
 const SHEET_PE = 'PE_Raw';
 const SHEET_REPORT = 'Report Summary [new generated]';
 const SHEET_HM = 'HM_Time_Raw';
+const SHEET_HM_REPORT = 'HM Report Summary [new generated]';
 const SHEET_FY_SUMMARY = 'Fiscal Year Summary [new generated]';
 const SHEET_AUTH_USERS = 'Auth_Users';
 const SHEET_AUTH_ROLES = 'Auth_Roles';
@@ -348,6 +349,9 @@ function setupSheets() {
 
   // Fiscal Year Summary
   setupFiscalYearSummary();
+
+  // HM Report Summary (formula-driven HM Time report)
+  setupHMReportSummary();
 }
 
 // ==========================================
@@ -1372,9 +1376,9 @@ function getHMTimeReportByMonth(yearMonth) {
   const empty = {
     yearMonth: yearMonth,
     dayCount: 0,
-    durationsMin: { step01: null, step02: null, step03: null, step04: null, step05: null, sumSteps: null, step09: null },
+    durationsMin: { step01: null, step02: null, step03: null, step04: null, step05: null, sumSteps: null, sumSteps1to4: null, step09: null },
     avgDrugCount: null,
-    perDrugMin: { step02: null, step03: null, step04: null },
+    perDrugMin: { step02: null, step03: null, step04: null, step05: null },
     rowCount: 0,
     rowsUsedPerMetric: { step01: 0, step02: 0, step03: 0, step04: 0, step05: 0, step09: 0, drugCount: 0 }
   };
@@ -1429,8 +1433,12 @@ function getHMTimeReportByMonth(yearMonth) {
     const s04 = timeDiffMin_(row[col['Step08_PharmCheckStart']], row[col['Step08_PharmCheckEnd']]);
     if (s04 !== null) { sums.step04 += s04; counts.step04++; }
 
-    const s05 = timeDiffMin_(row[col['Step10_PharmCheck2Start']], row[col['Step10_PharmCheck2End']]);
-    if (s05 !== null) { sums.step05 += s05; counts.step05++; }
+    const p10 = timeDiffMin_(row[col['Step10_PharmCheck2Start']], row[col['Step10_PharmCheck2End']]);
+    const pLate = timeDiffMin_(row[col['Step10_PharmCheck2Start']], row[col['Step11_LatePickupTime']]);
+    if (p10 !== null || pLate !== null) {
+      sums.step05 += (p10 || 0) + (pLate || 0);
+      counts.step05++;
+    }
 
     const s09 = timeDiffMin_(row[col['Step02_NurseReceiveTime']], row[col['Step09_WardChartTime']]);
     if (s09 !== null) { sums.step09 += s09; counts.step09++; }
@@ -1450,6 +1458,10 @@ function getHMTimeReportByMonth(yearMonth) {
   const sumSteps = stepVals.every(function(v) { return v !== null; })
     ? stepVals.reduce(function(a, b) { return a + b; }, 0)
     : null;
+  const steps1to4 = [step01, step02, step03, step04];
+  const sumSteps1to4 = steps1to4.every(function(v) { return v !== null; })
+    ? steps1to4.reduce(function(a, b) { return a + b; }, 0)
+    : null;
 
   function perDrug(v) {
     if (v === null || avgDrugCount === null || avgDrugCount === 0) return null;
@@ -1459,10 +1471,239 @@ function getHMTimeReportByMonth(yearMonth) {
   return {
     yearMonth: yearMonth,
     dayCount: distinctDates.size,
-    durationsMin: { step01: step01, step02: step02, step03: step03, step04: step04, step05: step05, sumSteps: sumSteps, step09: step09 },
+    durationsMin: { step01: step01, step02: step02, step03: step03, step04: step04, step05: step05, sumSteps: sumSteps, sumSteps1to4: sumSteps1to4, step09: step09 },
     avgDrugCount: avgDrugCount,
-    perDrugMin: { step02: perDrug(step02), step03: perDrug(step03), step04: perDrug(step04) },
+    perDrugMin: { step02: perDrug(step02), step03: perDrug(step03), step04: perDrug(step04), step05: perDrug(step05) },
     rowCount: rowsInMonth,
     rowsUsedPerMetric: counts
   };
+}
+
+// ==========================================
+// Setup HM Report Summary (formula-driven mirror of HM Time web report)
+// ==========================================
+function setupHMReportSummary() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_HM_REPORT);
+  if (sheet) ss.deleteSheet(sheet);
+  sheet = ss.insertSheet(SHEET_HM_REPORT);
+
+  // Column letter for each HM_HEADERS field (1-based)
+  function hmCol(name) {
+    const idx = HM_HEADERS.indexOf(name);
+    if (idx < 0) throw new Error('Missing HM header: ' + name);
+    return colLetter(idx + 1);
+  }
+
+  const RAW = 'HM_Time_Raw';
+  const C_DATE = hmCol('Step02_NurseReceiveDate');        // I
+  const C_S02T = hmCol('Step02_NurseReceiveTime');        // H
+  const C_S03  = hmCol('Step03_PharmCheckHMStart');       // J
+  const C_S04S = hmCol('Step04_PharmConsultStart');       // K
+  const C_S05E = hmCol('Step05_PharmEditEnd');            // N
+  const C_S06  = hmCol('Step06_PharmVerifyTime');         // O
+  const C_S07S = hmCol('Step07_DispenseStart');           // P
+  const C_S07E = hmCol('Step07_DispenseEnd');             // Q
+  const C_S08S = hmCol('Step08_PharmCheckStart');         // R
+  const C_S08E = hmCol('Step08_PharmCheckEnd');           // S
+  const C_S09T = hmCol('Step09_WardChartTime');           // T
+  const C_S10S = hmCol('Step10_PharmCheck2Start');        // V
+  const C_S10E = hmCol('Step10_PharmCheck2End');          // W
+  const C_S11  = hmCol('Step11_LatePickupTime');          // X
+  const C_DRUG = hmCol('DrugCount');                      // D
+
+  // Month selector cell (B2). START/END expressions reference $B$2.
+  const START = 'DATE(YEAR($B$2),MONTH($B$2),1)';
+  const END   = 'EOMONTH($B$2,0)';
+
+  // Range references (used in SUMPRODUCT over HM_Time_Raw rows 2..end)
+  function rng(col) { return RAW + '!' + col + '2:' + col; }
+
+  // Per-cell "time to number of days since midnight" expression that works
+  // whether the cell stores a text like "HH:MM" or a numeric time value.
+  // Evaluates to 0 when cell is blank (caller must guard with a nonblank mask).
+  function tv(col) {
+    const r = rng(col);
+    return 'IFERROR(TIMEVALUE(' + r + '),IFERROR(' + r + '*1,0))';
+  }
+
+  // Date-in-month mask
+  const MASK_MONTH = '(' + rng(C_DATE) + '>=' + START + ')*(' + rng(C_DATE) + '<=' + END + ')';
+
+  // Generic avg duration (end - start) in minutes, filtered by month,
+  // requires both endpoints non-blank. Returns "-" if no rows.
+  function avgDuration(startCol, endCol) {
+    const mask = MASK_MONTH +
+      '*(' + rng(startCol) + '<>"")*(' + rng(endCol) + '<>"")';
+    const num = 'SUMPRODUCT(' + mask + '*((' + tv(endCol) + ')-(' + tv(startCol) + ')))*1440';
+    const den = 'SUMPRODUCT(' + mask + ')';
+    return '=IFERROR(' + num + '/' + den + ',"-")';
+  }
+
+  // O2: (Step06 - Step03) - (Step05End - Step04Start when both present)
+  function avgO2() {
+    const maskBase = MASK_MONTH +
+      '*(' + rng(C_S03) + '<>"")*(' + rng(C_S06) + '<>"")';
+    const verifySpan = '((' + tv(C_S06) + ')-(' + tv(C_S03) + '))';
+    // consult pause only when both consultStart and editEnd exist
+    const pauseMask = '((' + rng(C_S04S) + '<>"")*(' + rng(C_S05E) + '<>""))';
+    const pause = pauseMask + '*((' + tv(C_S05E) + ')-(' + tv(C_S04S) + '))';
+    const num = 'SUMPRODUCT(' + maskBase + '*(' + verifySpan + '-' + pause + '))*1440';
+    const den = 'SUMPRODUCT(' + maskBase + ')';
+    return '=IFERROR(' + num + '/' + den + ',"-")';
+  }
+
+  // O5: (Step10End - Step10Start) + (Step11 - Step10Start), missing parts = 0.
+  // Row counts iff Step10Start is present AND at least one of the two diffs is >= 0
+  // (matches timeDiffMin_ which returns null on negative diffs, mirroring the JS logic).
+  function avgO5() {
+    const diff10 = '((' + tv(C_S10E) + ')-(' + tv(C_S10S) + '))';
+    const diffLate = '((' + tv(C_S11) + ')-(' + tv(C_S10S) + '))';
+    const ok10 = '(' + rng(C_S10E) + '<>"")*(' + diff10 + '>=0)';
+    const okLate = '(' + rng(C_S11) + '<>"")*(' + diffLate + '>=0)';
+    const anyOk = '(((' + ok10 + ')+(' + okLate + '))>0)';
+    const mask = MASK_MONTH + '*(' + rng(C_S10S) + '<>"")*' + anyOk;
+    const contrib = '((' + ok10 + ')*' + diff10 + '+(' + okLate + ')*' + diffLate + ')';
+    const num = 'SUMPRODUCT(' + mask + '*' + contrib + ')*1440';
+    const den = 'SUMPRODUCT(' + mask + ')';
+    return '=IFERROR(' + num + '/' + den + ',"-")';
+  }
+
+  // --- Build header / info block ---
+  // Row 1: title spanning A:E
+  sheet.getRange('A1').setValue('ระยะเวลาเฉลี่ย กระบวนการยากลับบ้าน');
+  sheet.getRange('A1:E1').merge();
+
+  // Row 2: ประจำเดือน (month selector in B2)
+  sheet.getRange('A2').setValue('ประจำเดือน');
+  sheet.getRange('B2').setValue(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  sheet.getRange('B2').setNumberFormat('MMMM yyyy');
+
+  // Row 3: จำนวนวัน
+  sheet.getRange('A3').setValue('จำนวนวัน');
+  sheet.getRange('B3').setFormula(
+    '=IFERROR(COUNTA(UNIQUE(FILTER(' + rng(C_DATE) + ',' +
+      rng(C_DATE) + '>=' + START + ',' + rng(C_DATE) + '<=' + END + '))),0) & " วัน"'
+  );
+
+  // Row 4: จำนวนผู้ป่วยที่เก็บข้อมูล
+  sheet.getRange('A4').setValue('จำนวนผู้ป่วยที่เก็บข้อมูล');
+  sheet.getRange('B4').setFormula(
+    '=COUNTIFS(' + RAW + '!' + C_DATE + ':' + C_DATE + ',">="&' + START + ',' +
+    RAW + '!' + C_DATE + ':' + C_DATE + ',"<="&' + END + ') & " ราย"'
+  );
+
+  // Row 5: จำนวนขนานยากลับบ้านเฉลี่ย (moved from table into info block)
+  sheet.getRange('A5').setValue('จำนวนขนานยากลับบ้านเฉลี่ย');
+  sheet.getRange('B5').setFormula(
+    '=IFERROR(ROUND(AVERAGEIFS(' + RAW + '!' + C_DRUG + ':' + C_DRUG + ',' +
+    RAW + '!' + C_DATE + ':' + C_DATE + ',">="&' + START + ',' +
+    RAW + '!' + C_DATE + ':' + C_DATE + ',"<="&' + END + '),2),"-")'
+  );
+
+  // Row 7: table header (row 6 is now blank spacer)
+  const header = ['รายละเอียด', 'เกณฑ์/เป้าหมาย (นาที)', 'ระยะเวลาเฉลี่ย (นาที)', 'ระยะเวลาเฉลี่ย/ขนานยา (นาที/ขนานยา)', 'สถานะ'];
+  sheet.getRange(7, 1, 1, header.length).setValues([header]);
+
+  // Rows 8..15
+  const ROW_O1 = 8;
+  const ROW_O2 = 9;
+  const ROW_O3 = 10;
+  const ROW_O4 = 11;
+  const ROW_O5 = 12;
+  const ROW_SUM_1_4 = 13;
+  const ROW_SUM_1_5 = 14;
+  const ROW_DRUG_CELL = '$B$5'; // drug avg moved to info block
+  const ROW_S09 = 15;
+
+  const rowSpec = [
+    { row: ROW_O1, label: '01 กระบวนการ - ก่อนตรวจสอบรายการยากลับบ้าน [Ward รับคำสั่ง - เริ่มตรวจสอบ]',
+      formula: avgDuration(C_S02T, C_S03), perDrug: false },
+    { row: ROW_O2, label: '02 กระบวนการ - คัดกรองคำสั่งใช้ยากลับบ้าน',
+      formula: avgO2(), perDrug: true },
+    { row: ROW_O3, label: '03 กระบวนการ - จัดยา',
+      formula: avgDuration(C_S07S, C_S07E), perDrug: true },
+    { row: ROW_O4, label: '04 กระบวนการ - ตรวจสอบความถูกต้องของรายการยากลับบ้าน',
+      formula: avgDuration(C_S08S, C_S08E), perDrug: true },
+    { row: ROW_O5, label: '05 กระบวนการ - ผู้ป่วยติดต่อรับยา - จ่ายยากลับบ้าน',
+      formula: avgO5(), perDrug: true }
+  ];
+
+  // Columns (new layout): A=label, B=target, C=avg, D=perDrug, E=status
+  rowSpec.forEach(function(s) {
+    sheet.getRange(s.row, 1).setValue(s.label);
+    sheet.getRange(s.row, 3).setFormula(s.formula);
+    if (s.perDrug) {
+      sheet.getRange(s.row, 4).setFormula('=IFERROR(IF(ISNUMBER(C' + s.row + '),C' + s.row + '/' + ROW_DRUG_CELL + ',"-"),"-")');
+    }
+  });
+
+  // Row 12: Sum O1..O4 + target + pass/fail tag
+  sheet.getRange(ROW_SUM_1_4, 1).setValue('ระยะเวลากระบวนการยากลับบ้าน [ตั้งแต่คำสั่งใช้ยากลับบ้านแสดงบน Dashboard ถึง เภสัชกรตรวจสอบความถูกต้องของรายการยากลับบ้าน]');
+  sheet.getRange(ROW_SUM_1_4, 2).setValue(45);
+  sheet.getRange(ROW_SUM_1_4, 3).setFormula(
+    '=IFERROR(IF(AND(ISNUMBER(C' + ROW_O1 + '),ISNUMBER(C' + ROW_O2 + '),ISNUMBER(C' + ROW_O3 + '),ISNUMBER(C' + ROW_O4 + ')),' +
+    'C' + ROW_O1 + '+C' + ROW_O2 + '+C' + ROW_O3 + '+C' + ROW_O4 + ',"-"),"-")'
+  );
+  sheet.getRange(ROW_SUM_1_4, 5).setFormula(
+    '=IF(ISNUMBER(C' + ROW_SUM_1_4 + '),IF(C' + ROW_SUM_1_4 + '<=B' + ROW_SUM_1_4 + ',"ผ่านเกณฑ์","ไม่ผ่านเกณฑ์"),"")'
+  );
+
+  // Row 13: Sum O1..O5
+  sheet.getRange(ROW_SUM_1_5, 1).setValue('ระยะเวลากระบวนการยากลับบ้าน ห้องยาผู้ป่วยใน ทั้งหมด [ตั้งแต่คำสั่งใช้ยากลับบ้านแสดงบน Dashboard ถึง เภสัชกรจ่ายยากลับบ้านให้ผู้ป่วยเสร็จสิ้น]');
+  sheet.getRange(ROW_SUM_1_5, 3).setFormula(
+    '=IFERROR(IF(AND(ISNUMBER(C' + ROW_O1 + '),ISNUMBER(C' + ROW_O2 + '),ISNUMBER(C' + ROW_O3 + '),ISNUMBER(C' + ROW_O4 + '),ISNUMBER(C' + ROW_O5 + ')),' +
+    'C' + ROW_O1 + '+C' + ROW_O2 + '+C' + ROW_O3 + '+C' + ROW_O4 + '+C' + ROW_O5 + ',"-"),"-")'
+  );
+
+  // Row 15: Step09 extra
+  sheet.getRange(ROW_S09, 1).setValue('กระบวนการ - ส่ง Chart และ คืนยา');
+  sheet.getRange(ROW_S09, 3).setFormula(avgDuration(C_S02T, C_S09T));
+
+  // --- Formatting ---
+  sheet.setColumnWidth(1, 680);
+  sheet.setColumnWidth(2, 180);
+  sheet.setColumnWidth(3, 220);
+  sheet.setColumnWidth(4, 260);
+  sheet.setColumnWidth(5, 220);
+
+  // Title row (merged A1:E1)
+  sheet.getRange('A1:E1').setBackground('#7BB8C0').setFontColor('#ffffff').setFontWeight('bold').setFontSize(12).setHorizontalAlignment('center');
+
+  // Info block
+  sheet.getRange('A2:A5').setFontWeight('bold').setBackground('#EAEEFF');
+  sheet.getRange('B2:B5').setFontWeight('bold');
+
+  // Header row
+  sheet.getRange(7, 1, 1, 5).setBackground('#A7B5FE').setFontColor('#ffffff').setFontWeight('bold');
+
+  // Data rows number formatting (columns C and D)
+  sheet.getRange(ROW_O1, 3, ROW_S09 - ROW_O1 + 1, 2).setNumberFormat('0.00');
+
+  // Center-align numeric columns (B target, C avg, D per-drug, E status) in data rows
+  sheet.getRange(ROW_O1, 2, ROW_S09 - ROW_O1 + 1, 4).setHorizontalAlignment('center');
+
+  // Sum rows highlight
+  sheet.getRange(ROW_SUM_1_4, 1, 1, 5).setBackground('#FEB737').setFontWeight('bold').setFontColor('#ffffff');
+  sheet.getRange(ROW_SUM_1_5, 1, 1, 5).setBackground('#FEB737').setFontWeight('bold').setFontColor('#ffffff');
+
+  // Wrap for long label column and status column
+  sheet.getRange('A1:A' + ROW_S09).setWrap(true).setVerticalAlignment('middle');
+  sheet.getRange('E1:E' + ROW_S09).setWrap(true).setVerticalAlignment('middle').setHorizontalAlignment('center');
+
+  // Conditional formatting on E12 (pass/fail tag)
+  const tagRange = sheet.getRange(ROW_SUM_1_4, 5);
+  const passRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo('ผ่านเกณฑ์')
+    .setBackground('#2d6a4f').setFontColor('#ffffff').setBold(true)
+    .setRanges([tagRange])
+    .build();
+  const failRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo('ไม่ผ่านเกณฑ์')
+    .setBackground('#c1121f').setFontColor('#ffffff').setBold(true)
+    .setRanges([tagRange])
+    .build();
+  sheet.setConditionalFormatRules([passRule, failRule]);
+
+  sheet.setFrozenRows(7);
 }
