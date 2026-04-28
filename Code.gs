@@ -1391,8 +1391,8 @@ function getHMTimeReportByMonth(yearMonth) {
   H.forEach(function(name, idx) { col[name] = idx; });
 
   const distinctDates = new Set();
-  const sums = { step01: 0, step02: 0, step03: 0, step04: 0, step05: 0, step09: 0, drugCount: 0 };
-  const counts = { step01: 0, step02: 0, step03: 0, step04: 0, step05: 0, step09: 0, drugCount: 0 };
+  const sums = { step01: 0, step02: 0, step03: 0, step04: 0, step05: 0, step09: 0, gap89: 0, drugCount: 0 };
+  const counts = { step01: 0, step02: 0, step03: 0, step04: 0, step05: 0, step09: 0, gap89: 0, drugCount: 0 };
   let rowsInMonth = 0;
 
   for (let i = 1; i < data.length; i++) {
@@ -1442,6 +1442,9 @@ function getHMTimeReportByMonth(yearMonth) {
 
     const s09 = timeDiffMin_(row[col['Step02_NurseReceiveTime']], row[col['Step09_WardChartTime']]);
     if (s09 !== null) { sums.step09 += s09; counts.step09++; }
+
+    const g89 = timeDiffMin_(row[col['Step08_PharmCheckEnd']], row[col['Step09_WardChartTime']]);
+    if (g89 !== null) { sums.gap89 += g89; counts.gap89++; }
   }
 
   function avg(key) { return counts[key] > 0 ? sums[key] / counts[key] : null; }
@@ -1454,9 +1457,10 @@ function getHMTimeReportByMonth(yearMonth) {
   const step09 = avg('step09');
   const avgDrugCount = avg('drugCount');
 
+  const gap89 = avg('gap89');
   const stepVals = [step01, step02, step03, step04, step05];
   const sumSteps = stepVals.every(function(v) { return v !== null; })
-    ? stepVals.reduce(function(a, b) { return a + b; }, 0)
+    ? stepVals.reduce(function(a, b) { return a + b; }, 0) + (gap89 || 0)
     : null;
   const steps1to4 = [step01, step02, step03, step04];
   const sumSteps1to4 = steps1to4.every(function(v) { return v !== null; })
@@ -1649,15 +1653,31 @@ function setupHMReportSummary() {
     '=IF(ISNUMBER(C' + ROW_SUM_1_4 + '),IF(C' + ROW_SUM_1_4 + '<=B' + ROW_SUM_1_4 + ',"ผ่านเกณฑ์","ไม่ผ่านเกณฑ์"),"")'
   );
 
-  // Row 13: Sum O1..O5
+  // Row 13: Sum O1..O5 + gap (Step09 - Step08)
   sheet.getRange(ROW_SUM_1_5, 1).setValue('ระยะเวลากระบวนการยากลับบ้าน ห้องยาผู้ป่วยใน ทั้งหมด [ตั้งแต่คำสั่งใช้ยากลับบ้านแสดงบน Dashboard ถึง เภสัชกรจ่ายยากลับบ้านให้ผู้ป่วยเสร็จสิ้น]');
+  // Gap (Step09_WardChartTime - Step08_PharmCheckEnd) average — matches JS timeDiffMin_:
+  // include row only if BOTH cells parse to a valid (non-zero) time AND diff >= 0.
+  // Treats blank/0/unparseable as missing (per-row contribution = 0, row excluded from denom).
+  function avgGap89() {
+    const startV = tv(C_S08E);
+    const endV = tv(C_S09T);
+    const diff = '((' + endV + ')-(' + startV + '))';
+    const validStart = '(' + rng(C_S08E) + '<>"")*((' + startV + ')>0)';
+    const validEnd   = '(' + rng(C_S09T) + '<>"")*((' + endV + ')>0)';
+    const validDiff  = '(' + diff + '>=0)';
+    const mask = MASK_MONTH + '*' + validStart + '*' + validEnd + '*' + validDiff;
+    const num = 'SUMPRODUCT(' + mask + '*' + diff + ')*1440';
+    const den = 'SUMPRODUCT(' + mask + ')';
+    return 'IFERROR(' + num + '/' + den + ',0)';
+  }
+  const gap89Expr = avgGap89();
   sheet.getRange(ROW_SUM_1_5, 3).setFormula(
     '=IFERROR(IF(AND(ISNUMBER(C' + ROW_O1 + '),ISNUMBER(C' + ROW_O2 + '),ISNUMBER(C' + ROW_O3 + '),ISNUMBER(C' + ROW_O4 + '),ISNUMBER(C' + ROW_O5 + ')),' +
-    'C' + ROW_O1 + '+C' + ROW_O2 + '+C' + ROW_O3 + '+C' + ROW_O4 + '+C' + ROW_O5 + ',"-"),"-")'
+    'C' + ROW_O1 + '+C' + ROW_O2 + '+C' + ROW_O3 + '+C' + ROW_O4 + '+C' + ROW_O5 + '+' + gap89Expr + ',"-"),"-")'
   );
 
   // Row 15: Step09 extra
-  sheet.getRange(ROW_S09, 1).setValue('กระบวนการ - ส่ง Chart และ คืนยา');
+  sheet.getRange(ROW_S09, 1).setValue('ระยะเวลาตั้งแต่ Ward รับคำสั่งยากลับบ้าน - ส่ง Chart และ คืนยา');
   sheet.getRange(ROW_S09, 3).setFormula(avgDuration(C_S02T, C_S09T));
 
   // --- Formatting ---
