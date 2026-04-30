@@ -244,10 +244,16 @@ function submitCounselingForm(forceUpsert) {
   var otherTextEl = document.getElementById('other-text');
   if (otherTextEl) freeText = otherTextEl.value.trim();
 
+  var dates = {};
+  document.querySelectorAll('#page-counseling input[type="date"][data-key]').forEach(function(el) {
+    dates[el.dataset.key] = el.value || '';
+  });
+
   var formData = {
     counselingDate: date,
     an: document.getElementById('counseling-an').value.trim(),
     checkboxes: checkboxes,
+    dates: dates,
     freeText: freeText,
     forceUpsert: forceUpsert || false
   };
@@ -282,6 +288,9 @@ function resetCounselingForm() {
   document.getElementById('an-error').classList.remove('visible');
   document.querySelectorAll('#page-counseling input[type="checkbox"]').forEach(function(cb) {
     cb.checked = false;
+  });
+  document.querySelectorAll('#page-counseling input[type="date"][data-key]').forEach(function(el) {
+    el.value = '';
   });
   var otherText = document.getElementById('other-text');
   if (otherText) otherText.value = '';
@@ -760,18 +769,72 @@ function renderSCARsDetailTable(rows) {
   var tbody = document.getElementById('scars-detail-tbody');
   var btn = document.getElementById('btn-download-scars');
   if (!rows || rows.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--text-light);">ไม่มีข้อมูลในเดือนนี้</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-light);">ไม่มีข้อมูลในเดือนนี้</td></tr>';
     btn.disabled = true;
     return;
   }
   var html = '';
   rows.forEach(function(row) {
     var displayDate = formatThaiDate(row.date);
+    var startDisplay = row.startDate
+      ? formatThaiDate(row.startDate)
+      : '<span style="color:var(--text-light);">—</span>';
     var drugs = row.drugs.map(function(d) { return escapeHtml(d); }).join(', ');
-    html += '<tr><td>' + displayDate + '</td><td>' + escapeHtml(row.an) + '</td><td>' + drugs + '</td></tr>';
+    var an = escapeHtml(row.an);
+    var startAttr = row.startDate || '';
+    html += '<tr>'
+      + '<td>' + displayDate + '</td>'
+      + '<td>' + startDisplay + '</td>'
+      + '<td>' + an + '</td>'
+      + '<td>' + drugs + '</td>'
+      + '<td><button class="btn-icon" title="แก้ไขวันที่เริ่มยา"'
+      +   ' onclick="openSCARsEdit(' + row.rowNumber + ', \'' + startAttr + '\', \'' + an + '\', \'' + escapeHtml(row.drugs.join(', ')).replace(/'/g, "\\'") + '\')">'
+      +   '<i class="fa-solid fa-pen"></i></button></td>'
+      + '</tr>';
   });
   tbody.innerHTML = html;
   btn.disabled = false;
+}
+
+// ==========================================
+// SCARs Edit Modal
+// ==========================================
+var _scarsEditRow = null;
+function openSCARsEdit(rowNumber, currentIso, an, drugs) {
+  _scarsEditRow = rowNumber;
+  document.getElementById('scars-edit-summary').innerHTML =
+    '<strong>AN:</strong> ' + an + '<br><strong>ยา:</strong> ' + drugs;
+  document.getElementById('scars-edit-date').value = currentIso || '';
+  document.getElementById('scars-edit-modal').style.display = 'flex';
+}
+function closeSCARsEdit(e) {
+  if (e && e.target && e.target.id !== 'scars-edit-modal' && e.type === 'click') return;
+  document.getElementById('scars-edit-modal').style.display = 'none';
+  _scarsEditRow = null;
+}
+function saveSCARsEdit() {
+  if (!_scarsEditRow) return;
+  var iso = document.getElementById('scars-edit-date').value || '';
+  var rowNum = _scarsEditRow;
+  showLoading();
+  google.script.run
+    .withSuccessHandler(function(result) {
+      hideLoading();
+      if (result && result.success) {
+        showToast(result.message || 'บันทึกสำเร็จ', 'success');
+        closeSCARsEdit();
+        if (typeof onMonthChange === 'function' && currentYearMonth) {
+          onMonthChange();
+        }
+      } else {
+        showToast((result && result.error) || 'บันทึกไม่สำเร็จ', 'error');
+      }
+    })
+    .withFailureHandler(function(err) {
+      hideLoading();
+      showToast('เกิดข้อผิดพลาด: ' + err.message, 'error');
+    })
+    .updateSCARsStartDate(rowNum, iso);
 }
 
 function formatThaiDate(isoDate) {
@@ -798,12 +861,17 @@ function downloadSCARsXLSX() {
     showToast('ไม่มีข้อมูลที่จะดาวน์โหลด', 'info');
     return;
   }
-  var wsData = [['วันที่', 'AN', 'ชื่อยา']];
+  var wsData = [['วันที่จำหน่าย', 'วันที่เริ่มยา', 'AN', 'ชื่อยา']];
   rows.forEach(function(row) {
-    wsData.push([formatThaiDate(row.date), row.an, row.drugs.join(', ')]);
+    wsData.push([
+      formatThaiDate(row.date),
+      row.startDate ? formatThaiDate(row.startDate) : '',
+      row.an,
+      row.drugs.join(', ')
+    ]);
   });
   var ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [{ wch: 20 }, { wch: 14 }, { wch: 60 }];
+  ws['!cols'] = [{ wch: 20 }, { wch: 20 }, { wch: 14 }, { wch: 60 }];
   var wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'SCARs_' + (currentYearMonth || 'data'));
   XLSX.writeFile(wb, 'SCARs_Patients_' + (currentYearMonth || 'data') + '.xlsx');

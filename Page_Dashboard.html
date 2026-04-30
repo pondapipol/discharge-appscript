@@ -161,15 +161,39 @@
     <table class="summary-table" id="scars-detail-table">
       <thead>
         <tr>
-          <th style="width:130px;">วันที่</th>
-          <th style="width:130px;">AN</th>
+          <th style="width:130px;">วันที่จำหน่าย</th>
+          <th style="width:130px;">วันที่เริ่มยา</th>
+          <th style="width:120px;">AN</th>
           <th style="text-align:left;">ชื่อยา</th>
+          <th style="width:60px;"></th>
         </tr>
       </thead>
       <tbody id="scars-detail-tbody">
-        <tr><td colspan="3" style="text-align:center; color:var(--text-light);">กรุณาเลือกเดือน</td></tr>
+        <tr><td colspan="5" style="text-align:center; color:var(--text-light);">กรุณาเลือกเดือน</td></tr>
       </tbody>
     </table>
+  </div>
+</div>
+
+<!-- SCARs Edit Modal -->
+<div id="scars-edit-modal" class="scars-modal-overlay" style="display:none;" onclick="closeSCARsEdit(event)">
+  <div class="scars-modal" onclick="event.stopPropagation();">
+    <div class="scars-modal-header">
+      <i class="fa-solid fa-pen" style="color: var(--honey);"></i>
+      <span>แก้ไขวันที่เริ่มยา</span>
+      <button class="scars-modal-close" onclick="closeSCARsEdit()" aria-label="ปิด">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="scars-modal-body">
+      <div id="scars-edit-summary" style="margin-bottom:14px; color:var(--text-light); font-size:0.95rem;"></div>
+      <label for="scars-edit-date" class="form-label" style="display:block; margin-bottom:6px; color: var(--sea-breeze); font-weight:600;">วันที่เริ่มยา</label>
+      <input type="date" id="scars-edit-date" class="form-input">
+    </div>
+    <div class="scars-modal-footer">
+      <button class="btn btn-secondary" onclick="closeSCARsEdit()">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveSCARsEdit()">บันทึก</button>
+    </div>
   </div>
 </div>
 

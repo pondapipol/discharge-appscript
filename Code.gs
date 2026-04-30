@@ -86,6 +86,7 @@ const COUNSELING_FIELDS = [
   { key: 'Cat_5_8_Other_Text', label: 'รายละเอียด อื่น ๆ', category: '5.8', subgroup: null, type: 'text' },
   // Appended at end to preserve existing column positions
   { key: 'Cat_5_1_SpecialOther_Omeprazole_NG', label: 'Omeprazole via NG Tube', category: '5.1', subgroup: 'ยาเทคนิคพิเศษอื่น ๆ' },
+  { key: 'Cat_5_6_SCARs_StartDate', label: 'วันที่เริ่มยา', category: '5.6', subgroup: null, type: 'date' },
 ];
 
 // ==========================================
@@ -911,6 +912,9 @@ function submitCounselingData(formData) {
   COUNSELING_FIELDS.forEach(field => {
     if (field.type === 'text') {
       row.push(formData.freeText || '');
+    } else if (field.type === 'date') {
+      const v = formData.dates && formData.dates[field.key];
+      row.push(v ? new Date(v) : '');
     } else {
       row.push(formData.checkboxes[field.key] === true);
     }
@@ -1185,10 +1189,11 @@ function getCounselingSummaryByMonth(yearMonth) {
   const allItemCounts = {};
   const scarsItems = {};
   const scarsPatientRows = [];
+  const startDateFieldIdx = COUNSELING_FIELDS.findIndex(function(f) { return f.key === 'Cat_5_6_SCARs_StartDate'; });
 
   // Initialize
   COUNSELING_FIELDS.forEach(f => {
-    if (f.type === 'text') return;
+    if (f.type === 'text' || f.type === 'date') return;
     allItemCounts[f.key] = 0;
     if (f.category === '5.1') detailedItems[f.label] = 0;
     if (f.category === '5.6' && f.subgroup) scarsItems[f.label] = 0;
@@ -1208,7 +1213,7 @@ function getCounselingSummaryByMonth(yearMonth) {
     let has56 = false;
 
     COUNSELING_FIELDS.forEach((field, idx) => {
-      if (field.type === 'text') return;
+      if (field.type === 'text' || field.type === 'date') return;
       const colIdx = idx + 3;
       if (data[i][colIdx] === true) {
         allItemCounts[field.key]++;
@@ -1239,7 +1244,17 @@ function getCounselingSummaryByMonth(yearMonth) {
           drugs.push(field.label);
         }
       });
-      scarsPatientRows.push({ date: dateStr, an: an, drugs: drugs });
+      let startDateStr = '';
+      if (startDateFieldIdx >= 0) {
+        const rawStart = data[i][startDateFieldIdx + 3];
+        if (rawStart instanceof Date && !isNaN(rawStart.getTime())) {
+          startDateStr = Utilities.formatDate(rawStart, tz, 'yyyy-MM-dd');
+        } else if (rawStart) {
+          const d = new Date(rawStart);
+          if (!isNaN(d.getTime())) startDateStr = Utilities.formatDate(d, tz, 'yyyy-MM-dd');
+        }
+      }
+      scarsPatientRows.push({ rowNumber: i + 1, date: dateStr, startDate: startDateStr, an: an, drugs: drugs });
     }
   });
 
@@ -1301,8 +1316,31 @@ function getDashboardData(yearMonth) {
     dc: getDCDataByMonth(yearMonth),
     pe: getPEDataLast6Months(),
     months: getAvailableMonths(),
-    fieldConfig: COUNSELING_FIELDS.filter(f => f.type !== 'text')
+    fieldConfig: COUNSELING_FIELDS.filter(f => f.type !== 'text' && f.type !== 'date')
   };
+}
+
+// Update only the Cat_5_6_SCARs_StartDate cell of a Counseling_Raw row.
+function updateSCARsStartDate(rowNumber, isoDate) {
+  checkPermission_('counseling');
+  const row = parseInt(rowNumber, 10);
+  if (!row || row < 2) return { success: false, error: 'Invalid row' };
+  const sheet = getOrCreateSheet(SHEET_COUNSELING);
+  if (row > sheet.getLastRow()) return { success: false, error: 'Row not found' };
+
+  const fieldIdx = COUNSELING_FIELDS.findIndex(function(f) { return f.key === 'Cat_5_6_SCARs_StartDate'; });
+  if (fieldIdx < 0) return { success: false, error: 'Field not configured' };
+  const colNumber = fieldIdx + 4; // A=1, B=CounselingDate, C=AN, D+=fields
+
+  const cell = sheet.getRange(row, colNumber);
+  if (!isoDate) {
+    cell.clearContent();
+  } else {
+    const d = new Date(isoDate);
+    if (isNaN(d.getTime())) return { success: false, error: 'Invalid date' };
+    cell.setValue(d);
+  }
+  return { success: true, message: 'อัพเดทวันที่เริ่มยาสำเร็จ' };
 }
 
 // ==========================================
@@ -1397,9 +1435,9 @@ function getHMTimeReportByMonth(yearMonth) {
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    const recvDate = row[col['Step02_NurseReceiveDate']];
-    if (!recvDate) continue;
-    const d = recvDate instanceof Date ? recvDate : new Date(recvDate);
+    const dischargeDate = row[col['DischargeDate']];
+    if (!dischargeDate) continue;
+    const d = dischargeDate instanceof Date ? dischargeDate : new Date(dischargeDate);
     if (isNaN(d.getTime())) continue;
     const ym = Utilities.formatDate(d, tz, 'yyyy-MM');
     if (ym !== yearMonth) continue;
@@ -1500,7 +1538,7 @@ function setupHMReportSummary() {
   }
 
   const RAW = 'HM_Time_Raw';
-  const C_DATE = hmCol('Step02_NurseReceiveDate');        // I
+  const C_DATE = hmCol('DischargeDate');                  // B (canonical visit date)
   const C_S02T = hmCol('Step02_NurseReceiveTime');        // H
   const C_S03  = hmCol('Step03_PharmCheckHMStart');       // J
   const C_S04S = hmCol('Step04_PharmConsultStart');       // K
@@ -1517,8 +1555,10 @@ function setupHMReportSummary() {
   const C_DRUG = hmCol('DrugCount');                      // D
 
   // Month selector cell (B2). START/END expressions reference $B$2.
+  // END is start of next month (exclusive) so any time-of-day on the last
+  // day of the selected month is included via "<" comparisons.
   const START = 'DATE(YEAR($B$2),MONTH($B$2),1)';
-  const END   = 'EOMONTH($B$2,0)';
+  const END   = 'EOMONTH($B$2,0)+1';
 
   // Range references (used in SUMPRODUCT over HM_Time_Raw rows 2..end)
   function rng(col) { return RAW + '!' + col + '2:' + col; }
@@ -1532,7 +1572,7 @@ function setupHMReportSummary() {
   }
 
   // Date-in-month mask
-  const MASK_MONTH = '(' + rng(C_DATE) + '>=' + START + ')*(' + rng(C_DATE) + '<=' + END + ')';
+  const MASK_MONTH = '(' + rng(C_DATE) + '>=' + START + ')*(' + rng(C_DATE) + '<' + END + ')';
 
   // Generic avg duration (end - start) in minutes, filtered by month,
   // requires both endpoints non-blank. Returns "-" if no rows.
@@ -1586,15 +1626,15 @@ function setupHMReportSummary() {
   // Row 3: จำนวนวัน
   sheet.getRange('A3').setValue('จำนวนวัน');
   sheet.getRange('B3').setFormula(
-    '=IFERROR(COUNTA(UNIQUE(FILTER(' + rng(C_DATE) + ',' +
-      rng(C_DATE) + '>=' + START + ',' + rng(C_DATE) + '<=' + END + '))),0) & " วัน"'
+    '=IFERROR(COUNTA(UNIQUE(FILTER(INT(' + rng(C_DATE) + '),' +
+      rng(C_DATE) + '>=' + START + ',' + rng(C_DATE) + '<' + END + '))),0) & " วัน"'
   );
 
-  // Row 4: จำนวนผู้ป่วยที่เก็บข้อมูล
+  // Row 4: จำนวนผู้ป่วยที่เก็บข้อมูล (count of records with DischargeDate in selected month)
   sheet.getRange('A4').setValue('จำนวนผู้ป่วยที่เก็บข้อมูล');
   sheet.getRange('B4').setFormula(
     '=COUNTIFS(' + RAW + '!' + C_DATE + ':' + C_DATE + ',">="&' + START + ',' +
-    RAW + '!' + C_DATE + ':' + C_DATE + ',"<="&' + END + ') & " ราย"'
+    RAW + '!' + C_DATE + ':' + C_DATE + ',"<"&' + END + ') & " ราย"'
   );
 
   // Row 5: จำนวนขนานยากลับบ้านเฉลี่ย (moved from table into info block)
@@ -1602,7 +1642,7 @@ function setupHMReportSummary() {
   sheet.getRange('B5').setFormula(
     '=IFERROR(ROUND(AVERAGEIFS(' + RAW + '!' + C_DRUG + ':' + C_DRUG + ',' +
     RAW + '!' + C_DATE + ':' + C_DATE + ',">="&' + START + ',' +
-    RAW + '!' + C_DATE + ':' + C_DATE + ',"<="&' + END + '),2),"-")'
+    RAW + '!' + C_DATE + ':' + C_DATE + ',"<"&' + END + '),2),"-")'
   );
 
   // Row 7: table header (row 6 is now blank spacer)

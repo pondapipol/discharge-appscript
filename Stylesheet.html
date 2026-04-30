@@ -1592,13 +1592,79 @@
     display: inline-block;
   }
 
-  /* SCARs detail table — drug name column left-aligned and wrapping */
-  #scars-detail-table td:last-child,
-  #scars-detail-table th:last-child {
+  /* SCARs detail table — drug name column (4th) left-aligned and wrapping */
+  #scars-detail-table td:nth-child(4),
+  #scars-detail-table th:nth-child(4) {
     text-align: left;
     white-space: normal;
     word-break: break-word;
     min-width: 200px;
     font-weight: 600;
+  }
+
+  /* Edit-row icon button */
+  .btn-icon {
+    background: transparent;
+    border: 1px solid var(--periwinkle);
+    color: var(--sea-breeze);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+  }
+  .btn-icon:hover {
+    background: var(--honey);
+    color: #fff;
+    border-color: var(--honey);
+  }
+
+  /* SCARs edit modal */
+  .scars-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 16px;
+  }
+  .scars-modal {
+    background: #fff;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+  }
+  .scars-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 18px;
+    border-bottom: 1px solid #eee;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .scars-modal-close {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-light);
+    font-size: 1.1rem;
+  }
+  .scars-modal-body { padding: 18px; }
+  .scars-modal-footer {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    padding: 12px 18px;
+    border-top: 1px solid #eee;
+    background: #fafafa;
   }
 </style>
